@@ -9,27 +9,86 @@ struct WindowCreateInfo {
 #define WIN32_LEAN_AND_MEAN
 #include "Windows.h"
 
-struct NativeWindow {
-	HWND handle;
+#define VK_USE_PLATFORM_WIN32_KHR
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#include "vulkan/vulkan.hpp"
+
+#include <bit>
+
+class NativeWindow {
+	static inline HINSTANCE win32NativeApplicationInstanceHandle = nullptr;
+
+	HWND handle = nullptr;
+	bool closed = true;
+
+public:
+	NativeWindow(const WindowCreateInfo &createInfo) {
+		if (!win32NativeApplicationInstanceHandle) {
+			// declare window class
+			win32NativeApplicationInstanceHandle = GetModuleHandle(nullptr);
+			WNDCLASSEX windowClass{
+				.cbSize = sizeof(windowClass),
+				.style = 0,
+				.lpfnWndProc = [](HWND windowHandle, UINT messageId, WPARAM wp, LPARAM lp) -> LRESULT {
+					NativeWindow *nativeWindowPtr = std::bit_cast<NativeWindow*>(GetWindowLongPtr(windowHandle, GWLP_USERDATA));
+					if (nativeWindowPtr) {
+						switch (messageId) {
+						case WM_CLOSE:
+							nativeWindowPtr->closed = true;
+						}
+					}
+					return DefWindowProc(windowHandle, messageId, wp, lp);
+				},
+				.cbClsExtra = 0,
+				.cbWndExtra = 0,
+				.hInstance = win32NativeApplicationInstanceHandle,
+				.hIcon = nullptr,
+				.hCursor = nullptr,
+				.hbrBackground = nullptr,
+				.lpszMenuName = nullptr,
+				.lpszClassName = "hello-triangle.NativeWindow",
+				.hIconSm = nullptr,
+			};
+			RegisterClassEx(&windowClass);
+		}
+		RECT wr = {0, 0, createInfo.frameSizeX, createInfo.frameSizeY};
+		AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
+		handle = CreateWindowEx(
+			0, "hello-triangle.NativeWindow", "my window title", WS_OVERLAPPEDWINDOW,
+			CW_USEDEFAULT, CW_USEDEFAULT, wr.right - wr.left, wr.bottom - wr.top,
+			nullptr, nullptr, win32NativeApplicationInstanceHandle, nullptr);
+		
+		if (handle) {
+			closed = false;
+			SetWindowLongPtr(handle, GWLP_USERDATA, std::bit_cast<LONG_PTR>(this));
+			ShowWindow(handle, SW_SHOW);
+		}
+	}
+	auto createVulkanSurface(vk::Instance vkInstance) {
+		return vkInstance.createWin32SurfaceKHR({
+			.hinstance = win32NativeApplicationInstanceHandle,
+			.hwnd = handle,
+		});
+	}
+	bool isOpen() {
+		return !closed;
+	}
+	void handleEvents() {
+		MSG win32Message;
+		while (PeekMessage(&win32Message, handle, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&win32Message);
+			DispatchMessage(&win32Message);
+		}
+	}
 };
-
-NativeWindow createNativeWindow(const WindowCreateInfo createInfo) {
-    NativeWindow result;
-    RECT wr = {0, 0, createInfo.frameSizeX, createInfo.frameSizeY};
-    AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
-    result.handle = CreateWindowEx(
-        0, create_info.class_name, "my window title", WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, wr.right - wr.left, wr.bottom - wr.top,
-        nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
-    return result;
-}
-
 #endif
 
 class Window {
 	NativeWindow nativeWindow;
 
 public:
-	Window(const WindowCreateInfo createInfo) {
-	}
+	Window(const WindowCreateInfo createInfo) : nativeWindow(createInfo) {}
+	auto createVulkanSurface(vk::Instance vkInstance) { return nativeWindow.createVulkanSurface(vkInstance); }
+	bool isOpen() { return nativeWindow.isOpen(); }
+	void handleEvents() { nativeWindow.handleEvents(); }
 };

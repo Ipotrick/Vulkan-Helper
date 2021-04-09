@@ -1,20 +1,27 @@
-#include <iostream>
+#include "window.hpp"
 
 #define VULKANHELPER_IMPLEMENTATION
 #include <vulkanhelper.hpp>
 
-#include "window.hpp"
-
 int main() {
-	vkh::Context vkContext;
+    // instance creation
+    // vk::Instance vulkanInstance;
 
-	Window window;
-	vkContext.createSurface(window.vulkanSurfaceCreateInfo());
+	Window window({.frameSizeX = 800, .frameSizeY = 600, .title = "Hello Triangle"});
+    // auto vulkanSurface = window.createVulkanSurface(vulkanInstance);
 
-	auto physicalDevice = vkContext.selectPhysicalDevice([]() {
-		size_t score = 0;
-		return score;
-	});
+    // physical device selection
+    // logical device creation
+    // queue retrieval
+    // swapchain creation
 
-	auto logicalDevice = vkContext.createLogicalDevice();
+    // raw vulkan
+
+    while (true) {
+        window.handleEvents();
+        if (!window.isOpen())
+            break;
+        
+        // draw code
+    }
 }

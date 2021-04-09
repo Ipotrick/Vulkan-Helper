@@ -11,6 +11,11 @@
 #include <fstream>
 #endif
 
+#if defined(_WIN32) || defined(_WIN64)
+#define VK_USE_PLATFORM_WIN32_KHR
+#else
+#error "CURRENTLY UNSUPPORTED PLATFORM"
+#endif
 #include <vulkan/vulkan.hpp>
 
 namespace vkh {
@@ -252,7 +257,6 @@ namespace vkh {
 #ifdef VULKANHELPER_IMPLEMENTATION
 
 	std::optional<vk::UniqueShaderModule> loadShaderModule(vk::Device device, std::filesystem::path filePath) {
-
 		std::ifstream file{filePath, std::ios::ate | std::ios::binary};
 
 		if (!file.is_open()) {
@@ -260,13 +264,9 @@ namespace vkh {
 		}
 
 		size_t fileSize = static_cast<size_t>(file.tellg());
-
 		std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
-
 		file.seekg(0);
-
 		file.read((char *)buffer.data(), fileSize);
-
 		file.close();
 
 		vk::ShaderModuleCreateInfo createInfo = {};
@@ -404,7 +404,6 @@ namespace vkh {
 	};
 
 #ifdef VULKANHELPER_IMPLEMENTATION
-
 	vk::UniqueCommandPool makeUniqueCommandPool(
 		vk::Device device,
 		uint32_t queueFamilyIndex,
@@ -419,13 +418,14 @@ namespace vkh {
 	CommandPool::CommandPool(
 		vk::Device device,
 		uint32_t queueFamilyIndex,
-		vk::CommandPoolCreateFlagBits flags) : queueFamilyIndex{queueFamilyIndex},
-											   device{device},
-											   pool{makeUniqueCommandPool(device, queueFamilyIndex, flags)},
-											   bufferPool{
-												   [=]() { return device.allocateCommandBuffers(vk::CommandBufferAllocateInfo{.commandPool = *pool, .commandBufferCount = 1}).front(); },
-												   [=](vk::CommandBuffer buffer) { /* gets freed anyway */ },
-												   [=](vk::CommandBuffer buffer) { buffer.reset(); }} {}
+		vk::CommandPoolCreateFlagBits flags)
+		: queueFamilyIndex{queueFamilyIndex},
+		  device{device},
+		  pool{makeUniqueCommandPool(device, queueFamilyIndex, flags)},
+		  bufferPool{
+			  [=]() { return device.allocateCommandBuffers(vk::CommandBufferAllocateInfo{.commandPool = *pool, .commandBufferCount = 1}).front(); },
+			  [=](vk::CommandBuffer buffer) { /* gets freed anyway */ },
+			  [=](vk::CommandBuffer buffer) { buffer.reset(); }} {}
 
 	CommandPool::CommandPool(CommandPool &&other) noexcept {
 		this->queueFamilyIndex = other.queueFamilyIndex;
