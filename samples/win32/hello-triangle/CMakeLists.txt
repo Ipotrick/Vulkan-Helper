@@ -5,5 +5,5 @@ find_package(glm CONFIG REQUIRED)
 
 project(${PROJECT_NAME}_hello-triangle)
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} "main.cpp")
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan-Helper glm::glm glslang::HLSL glslang::SPIRV glslang::glslang glslang::OGLCompiler)
