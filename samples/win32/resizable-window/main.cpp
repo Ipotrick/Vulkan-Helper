@@ -5,7 +5,7 @@ class ResizableHelloTriangleApp : public Window {
 	HelloTriangle helloTriangle;
 
 public:
-	ResizableHelloTriangleApp() : Window({.frameSizeX = 800, .frameSizeY = 600, .title = "Resizable Hello Triangle"}) {
+	ResizableHelloTriangleApp() : Window({.frameSizeX = 800, .frameSizeY = 600, .title = "Win32 Resizable Hello Triangle"}) {
 		helloTriangle.frameSizeX = 800;
 		helloTriangle.frameSizeX = 600;
 		helloTriangle.initInstance();

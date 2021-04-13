@@ -8,11 +8,7 @@ int main() try {
 	helloTriangle.frameSizeX = 800;
 	helloTriangle.frameSizeX = 600;
 	helloTriangle.initInstance();
-	Window window({
-		.frameSizeX = helloTriangle.frameSizeX,
-		.frameSizeY = helloTriangle.frameSizeX,
-		.title = "Hello Triangle",
-	});
+	Window window({.frameSizeX = helloTriangle.frameSizeX, .frameSizeY = helloTriangle.frameSizeX, .title = "Win32 Hello Triangle"});
 	helloTriangle.vulkanWindowSurface = window.createVulkanSurface(helloTriangle.vulkanInstance);
 	helloTriangle.initDevice();
 	helloTriangle.initVertexbuffer();
