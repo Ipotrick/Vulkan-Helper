@@ -31,11 +31,11 @@ public:
 				.cbSize = sizeof(windowClass),
 				.style = 0,
 				.lpfnWndProc = [](HWND windowHandle, UINT messageId, WPARAM wp, LPARAM lp) -> LRESULT {
-					NativeWindow *nativeWindowPtr = std::bit_cast<NativeWindow*>(GetWindowLongPtr(windowHandle, GWLP_USERDATA));
+					NativeWindow *nativeWindowPtr = std::bit_cast<NativeWindow *>(GetWindowLongPtr(windowHandle, GWLP_USERDATA));
 					if (nativeWindowPtr) {
 						switch (messageId) {
 						case WM_CLOSE: nativeWindowPtr->closed = true; break;
-                        case WM_SIZE: nativeWindowPtr->onResize(LOWORD(lp), HIWORD(lp));
+						case WM_SIZE: nativeWindowPtr->onResize(LOWORD(lp), HIWORD(lp));
 						}
 					}
 					return DefWindowProc(windowHandle, messageId, wp, lp);
@@ -58,7 +58,7 @@ public:
 			0, "hello-triangle.NativeWindow", createInfo.title, WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT, wr.right - wr.left, wr.bottom - wr.top,
 			nullptr, nullptr, win32NativeApplicationInstanceHandle, nullptr);
-		
+
 		if (handle) {
 			closed = false;
 			SetWindowLongPtr(handle, GWLP_USERDATA, std::bit_cast<LONG_PTR>(this));
@@ -82,7 +82,7 @@ public:
 		}
 	}
 
-    virtual void onResize(int, int) {}
+	virtual void onResize(int, int) {}
 };
 #endif
 
