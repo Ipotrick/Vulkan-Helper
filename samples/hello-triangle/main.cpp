@@ -1,4 +1,4 @@
-#include "window.hpp"
+#include "../shared/window.hpp"
 
 #define VULKANHELPER_IMPLEMENTATION
 #include <vulkanhelper.hpp>

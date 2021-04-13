@@ -16,10 +16,11 @@ struct WindowCreateInfo {
 #include <bit>
 
 class NativeWindow {
-	static inline HINSTANCE win32NativeApplicationInstanceHandle = nullptr;
-
-	HWND handle = nullptr;
 	bool closed = true;
+
+protected:
+	static inline HINSTANCE win32NativeApplicationInstanceHandle = nullptr;
+	HWND handle = nullptr;
 
 public:
 	NativeWindow(const WindowCreateInfo &createInfo) {
@@ -33,8 +34,8 @@ public:
 					NativeWindow *nativeWindowPtr = std::bit_cast<NativeWindow*>(GetWindowLongPtr(windowHandle, GWLP_USERDATA));
 					if (nativeWindowPtr) {
 						switch (messageId) {
-						case WM_CLOSE:
-							nativeWindowPtr->closed = true;
+						case WM_CLOSE: nativeWindowPtr->closed = true; break;
+                        case WM_SIZE: nativeWindowPtr->onResize(LOWORD(lp), HIWORD(lp));
 						}
 					}
 					return DefWindowProc(windowHandle, messageId, wp, lp);
@@ -80,15 +81,9 @@ public:
 			DispatchMessage(&win32Message);
 		}
 	}
+
+    virtual void onResize(int, int) {}
 };
 #endif
 
-class Window {
-	NativeWindow nativeWindow;
-
-public:
-	Window(const WindowCreateInfo createInfo) : nativeWindow(createInfo) {}
-	auto createVulkanSurface(vk::Instance vkInstance) { return nativeWindow.createVulkanSurface(vkInstance); }
-	bool isOpen() { return nativeWindow.isOpen(); }
-	void handleEvents() { nativeWindow.handleEvents(); }
-};
+using Window = NativeWindow;
