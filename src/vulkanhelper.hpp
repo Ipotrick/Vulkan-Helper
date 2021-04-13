@@ -4,11 +4,16 @@
 #include <vector>
 #include <optional>
 #include <filesystem>
+#include <functional>
 
-#ifdef VULKANHELPER_IMPLEMENTATION
+#if defined(VULKANHELPER_IMPLEMENTATION)
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <iostream>
 #include <fstream>
+
+// temp?
+#include <fmt/core.h>
+#include <set>
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -50,7 +55,7 @@ namespace vkh {
 		std::vector<vk::VertexInputAttributeDescription> attributes;
 	};
 
-#ifdef VULKANHELPER_IMPLEMENTATION
+#if defined(VULKANHELPER_IMPLEMENTATION)
 	VertexDiscriptionBuilder &VertexDiscriptionBuilder::beginBinding(uint32_t stride, vk::VertexInputRate inputRate) {
 		offset = 0;
 		location = 0;
@@ -145,7 +150,7 @@ namespace vkh {
 		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0);
 	};
 
-#ifdef VULKANHELPER_IMPLEMENTATION
+#if defined(VULKANHELPER_IMPLEMENTATION)
 	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode) {
 		return vk::PipelineRasterizationStateCreateInfo{
 			.polygonMode = polygonMode,
@@ -254,8 +259,7 @@ namespace vkh {
 
 	vk::PipelineShaderStageCreateInfo makeShaderStageCreateInfo(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule);
 
-#ifdef VULKANHELPER_IMPLEMENTATION
-
+#if defined(VULKANHELPER_IMPLEMENTATION)
 	std::optional<vk::UniqueShaderModule> loadShaderModule(vk::Device device, std::filesystem::path filePath) {
 		std::ifstream file{filePath, std::ios::ate | std::ios::binary};
 
@@ -293,7 +297,7 @@ namespace vkh {
 
 	vk::AttachmentDescription makeDefaultColorAttackmentDescription();
 
-#ifdef VULKANHELPER_IMPLEMENTATION
+#if defined(VULKANHELPER_IMPLEMENTATION)
 	vk::FenceCreateInfo makeDefaultFenceCI() {
 		vk::FenceCreateInfo info{};
 		info.flags |= vk::FenceCreateFlagBits::eSignaled;
@@ -403,7 +407,7 @@ namespace vkh {
 		Pool<vk::CommandBuffer> bufferPool;
 	};
 
-#ifdef VULKANHELPER_IMPLEMENTATION
+#if defined(VULKANHELPER_IMPLEMENTATION)
 	vk::UniqueCommandPool makeUniqueCommandPool(
 		vk::Device device,
 		uint32_t queueFamilyIndex,
@@ -452,5 +456,141 @@ namespace vkh {
 	void CommandPool::flush() {
 		bufferPool.flush();
 	}
+#endif
+} // namespace vkh
+
+namespace vkh_detail {
+	static PFN_vkCreateDebugUtilsMessengerEXT pfnVkCreateDebugUtilsMessengerEXT;
+	static PFN_vkDestroyDebugUtilsMessengerEXT pfnVkDestroyDebugUtilsMessengerEXT;
+} // namespace vkh_detail
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pMessenger) {
+	return vkh_detail::pfnVkCreateDebugUtilsMessengerEXT(instance, pCreateInfo, pAllocator, pMessenger);
+}
+VKAPI_ATTR void VKAPI_CALL vkDestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT messenger, VkAllocationCallbacks const *pAllocator) {
+	return vkh_detail::pfnVkDestroyDebugUtilsMessengerEXT(instance, messenger, pAllocator);
+}
+#endif
+
+namespace vkh {
+	vk::Instance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions);
+
+	vk::DebugUtilsMessengerEXT createDebugMessenger(vk::Instance instance);
+
+	vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability);
+
+    std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask);
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	vk::Instance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions) {
+		vk::ApplicationInfo vulkanApplicationInfo{.apiVersion = VK_API_VERSION_1_1};
+		return vk::createInstance({
+			.pApplicationInfo = &vulkanApplicationInfo,
+			.enabledLayerCount = static_cast<uint32_t>(layers.size()),
+			.ppEnabledLayerNames = layers.data(),
+			.enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+			.ppEnabledExtensionNames = extensions.data(),
+		});
+	}
+
+	vk::DebugUtilsMessengerEXT createDebugMessenger(vk::Instance instance) {
+		vkh_detail::pfnVkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+		if (!vkh_detail::pfnVkCreateDebugUtilsMessengerEXT)
+			throw std::runtime_error("GetInstanceProcAddr: Unable to find pfnVkCreateDebugUtilsMessengerEXT function.");
+		vkh_detail::pfnVkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
+		if (!vkh_detail::pfnVkDestroyDebugUtilsMessengerEXT)
+			throw std::runtime_error("GetInstanceProcAddr: Unable to find pfnVkDestroyDebugUtilsMessengerEXT function.");
+
+		return instance.createDebugUtilsMessengerEXT(vk::DebugUtilsMessengerCreateInfoEXT{
+			.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+			.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
+			.pfnUserCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+								  const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) -> VkBool32 {
+				if (pCallbackData->messageIdNumber == 648835635) {
+					// UNASSIGNED-khronos-Validation-debug-build-warning-message
+					return VK_FALSE;
+				}
+				if (pCallbackData->messageIdNumber == 767975156) {
+					// UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
+					return VK_FALSE;
+				}
+				std::string message = fmt::format(
+					"{}: {}:\n\tmessage name   = <{}>\n\tmessage number = {}\n\tmessage        = <{}>\n",
+					vk::to_string(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity)),
+					vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(messageTypes)),
+					pCallbackData->pMessageIdName,
+					pCallbackData->messageIdNumber,
+					pCallbackData->pMessage);
+				if (0 < pCallbackData->queueLabelCount) {
+					message += fmt::format("\tQueue Labels:\n");
+					for (uint8_t i = 0; i < pCallbackData->queueLabelCount; i++)
+						message += fmt::format("\t\tlabelName = <{}>\n", pCallbackData->pQueueLabels[i].pLabelName);
+				}
+				if (0 < pCallbackData->cmdBufLabelCount) {
+					message += fmt::format("\tCommandBuffer Labels:\n");
+					for (uint8_t i = 0; i < pCallbackData->cmdBufLabelCount; i++)
+						message += fmt::format("\t\tlabelName = <{}>\n", pCallbackData->pCmdBufLabels[i].pLabelName);
+				}
+				if (0 < pCallbackData->objectCount) {
+					message += fmt::format("\tObjects:\n");
+					for (uint8_t i = 0; i < pCallbackData->cmdBufLabelCount; i++) {
+						message += fmt::format("\t\tlabelName = <{}>\nObject {}\n\t\t\tobjectType   = {}\n\t\t\tobjectHandle = {}\n",
+											   pCallbackData->pCmdBufLabels[i].pLabelName, i,
+											   vk::to_string(static_cast<vk::ObjectType>(pCallbackData->pObjects[i].objectType)),
+											   pCallbackData->pObjects[i].objectHandle);
+						if (pCallbackData->pObjects[i].pObjectName)
+							message += fmt::format("\t\t\tobjectName   = <{}>\n", pCallbackData->pObjects[i].pObjectName);
+					}
+				}
+				MessageBox(nullptr, message.c_str(), "Vulkan Validation Error", MB_OK);
+				return VK_TRUE;
+			},
+		});
+	}
+
+	vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability) {
+		auto devices = instance.enumeratePhysicalDevices();
+		std::vector<std::size_t> devicesSuitability;
+		devicesSuitability.reserve(devices.size());
+		for (const auto &device : devices)
+			devicesSuitability.push_back(rateDeviceSuitability(device));
+		auto bestDeviceIter = std::max_element(devicesSuitability.begin(), devicesSuitability.end());
+		if (*bestDeviceIter == 0)
+			throw std::runtime_error("Failed to find a suitable physical device");
+		return devices[std::distance(devicesSuitability.begin(), bestDeviceIter)];
+	}
+
+	auto createLogicalDevice(vk::PhysicalDevice physicalDevice, const std::set<std::size_t> &queueIndices, const std::vector<const char *> &extensions) {
+		float queuePriority = 0.0f;
+		std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateinfos;
+		for (auto index : queueIndices) {
+			deviceQueueCreateinfos.push_back({
+				.queueFamilyIndex = static_cast<std::uint32_t>(index),
+				.queueCount = 1,
+				.pQueuePriorities = &queuePriority,
+			});
+		}
+		return physicalDevice.createDevice({
+			.queueCreateInfoCount = static_cast<std::uint32_t>(deviceQueueCreateinfos.size()),
+			.pQueueCreateInfos = deviceQueueCreateinfos.data(),
+			.enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+			.ppEnabledExtensionNames = extensions.data(),
+		});
+	}
+
+    std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask) {
+        std::uint32_t type_index = std::uint32_t(~0);
+        for (std::uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+            if (typeBits & 1 && (memoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
+                type_index = i;
+                break;
+            }
+            typeBits >>= 1;
+        }
+        if (type_index == std::uint32_t(~0))
+            throw std::runtime_error("Unable to find suitable memory type index");
+        return type_index;
+    }
 #endif
 } // namespace vkh

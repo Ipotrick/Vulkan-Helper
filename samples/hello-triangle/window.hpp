@@ -54,7 +54,7 @@ public:
 		RECT wr = {0, 0, createInfo.frameSizeX, createInfo.frameSizeY};
 		AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
 		handle = CreateWindowEx(
-			0, "hello-triangle.NativeWindow", "my window title", WS_OVERLAPPEDWINDOW,
+			0, "hello-triangle.NativeWindow", createInfo.title, WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT, wr.right - wr.left, wr.bottom - wr.top,
 			nullptr, nullptr, win32NativeApplicationInstanceHandle, nullptr);
 		
