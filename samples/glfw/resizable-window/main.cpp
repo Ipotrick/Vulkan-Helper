@@ -14,15 +14,15 @@ int main() try {
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	auto glfwWindowPtr = glfwCreateWindow(helloTriangle.frameSizeX, helloTriangle.frameSizeY, "GLFW Resizable Hello Triangle", nullptr, nullptr);
-    glfwSetWindowUserPointer(glfwWindowPtr, &helloTriangle);
+	glfwSetWindowUserPointer(glfwWindowPtr, &helloTriangle);
 
 	auto vkCApiSurfacePtr = static_cast<VkSurfaceKHR>(helloTriangle.vulkanWindowSurface);
 	glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
 	helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
 
-    glfwSetWindowSizeCallback(glfwWindowPtr, [](GLFWwindow *glfwWindowPtr, int sizeX, int sizeY) -> void {
-        auto &helloTriangle = *static_cast<HelloTriangle*>(glfwGetWindowUserPointer(glfwWindowPtr));
-        
+	glfwSetWindowSizeCallback(glfwWindowPtr, [](GLFWwindow *glfwWindowPtr, int sizeX, int sizeY) -> void {
+		auto &helloTriangle = *static_cast<HelloTriangle *>(glfwGetWindowUserPointer(glfwWindowPtr));
+
 		helloTriangle.frameSizeX = sizeX;
 		helloTriangle.frameSizeY = sizeY;
 
@@ -31,10 +31,10 @@ int main() try {
 		helloTriangle.deinitSwapchain();
 
 		if (!helloTriangle.vulkanWindowSurface) {
-            auto vkCApiSurfacePtr = static_cast<VkSurfaceKHR>(helloTriangle.vulkanWindowSurface);
-            glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
-            helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
-            
+			auto vkCApiSurfacePtr = static_cast<VkSurfaceKHR>(helloTriangle.vulkanWindowSurface);
+			glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
+			helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
+
 			if (!helloTriangle.selectedPhysicalDevice.getSurfaceSupportKHR(
 					static_cast<std::uint32_t>(helloTriangle.queueIndices.presentation.value()),
 					helloTriangle.vulkanWindowSurface))
@@ -46,7 +46,7 @@ int main() try {
 
 		helloTriangle.draw();
 		glfwSwapBuffers(glfwWindowPtr);
-    });
+	});
 
 	helloTriangle.initDevice();
 	helloTriangle.initVertexbuffer();
