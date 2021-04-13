@@ -498,9 +498,6 @@ struct HelloTriangle {
 		// submit command buffer to graphics queue
 		auto drawFence = logicalDevice.createFence({});
 		graphicsQueue.submit({{.commandBufferCount = 1, .pCommandBuffers = &graphicsCommandBuffer}}, drawFence);
-		while (vk::Result::eTimeout == logicalDevice.waitForFences(drawFence, VK_TRUE, 100000000 /* fence timeout */)) {
-			// wait
-		}
 
 		auto presentResult = presentQueue.presentKHR({
 			.swapchainCount = 1,
@@ -510,6 +507,13 @@ struct HelloTriangle {
 
 		if (presentResult != vk::Result::eSuccess)
 			throw std::runtime_error("Failed to execute present queue");
+
+
+		logicalDevice.waitIdle();
+		
+		//while (vk::Result::eTimeout == logicalDevice.waitForFences(drawFence, VK_TRUE, 100000000 /* fence timeout */)) {
+		//	// wait
+		//}
 
 		logicalDevice.destroyFence(drawFence);
 		logicalDevice.destroySemaphore(imageAcquiredSemaphore);
