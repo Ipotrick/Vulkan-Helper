@@ -6,4 +6,4 @@ find_package(glm CONFIG REQUIRED)
 project(${PROJECT_NAME}_resizable-window)
 
 add_executable(${PROJECT_NAME} "main.cpp")
-target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan-Helper glm::glm glslang::HLSL glslang::SPIRV glslang::glslang glslang::OGLCompiler)
+target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm glslang::HLSL glslang::SPIRV glslang::glslang glslang::OGLCompiler Vulkan-Helper)
