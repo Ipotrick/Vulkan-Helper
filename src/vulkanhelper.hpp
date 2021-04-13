@@ -18,10 +18,12 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #define VK_USE_PLATFORM_WIN32_KHR
+#include <vulkan/vulkan.hpp>
+#undef max
+#undef min
 #else
 #error "CURRENTLY UNSUPPORTED PLATFORM"
 #endif
-#include <vulkan/vulkan.hpp>
 
 namespace vkh {
 	struct VertexDescription {

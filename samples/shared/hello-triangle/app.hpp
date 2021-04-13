@@ -1,189 +1,12 @@
-#include "../shared/window.hpp"
+#pragma once
 
 #define VULKANHELPER_IMPLEMENTATION
 #include <vulkanhelper.hpp>
 
+#include "../load-shader.hpp"
 #include <glm/glm.hpp>
 
-#include <glslang/SPIRV/GlslangToSpv.h>
-#include <glslang/Include/ResourceLimits.h>
-
 #include <utility>
-
-static constexpr TBuiltInResource get_resource() {
-	return TBuiltInResource{
-		.maxLights = 32,
-		.maxClipPlanes = 6,
-		.maxTextureUnits = 32,
-		.maxTextureCoords = 32,
-		.maxVertexAttribs = 64,
-		.maxVertexUniformComponents = 4096,
-		.maxVaryingFloats = 64,
-		.maxVertexTextureImageUnits = 32,
-		.maxCombinedTextureImageUnits = 80,
-		.maxTextureImageUnits = 32,
-		.maxFragmentUniformComponents = 4096,
-		.maxDrawBuffers = 32,
-		.maxVertexUniformVectors = 128,
-		.maxVaryingVectors = 8,
-		.maxFragmentUniformVectors = 16,
-		.maxVertexOutputVectors = 16,
-		.maxFragmentInputVectors = 15,
-		.minProgramTexelOffset = -8,
-		.maxProgramTexelOffset = 7,
-		.maxClipDistances = 8,
-		.maxComputeWorkGroupCountX = 65535,
-		.maxComputeWorkGroupCountY = 65535,
-		.maxComputeWorkGroupCountZ = 65535,
-		.maxComputeWorkGroupSizeX = 1024,
-		.maxComputeWorkGroupSizeY = 1024,
-		.maxComputeWorkGroupSizeZ = 64,
-		.maxComputeUniformComponents = 1024,
-		.maxComputeTextureImageUnits = 16,
-		.maxComputeImageUniforms = 8,
-		.maxComputeAtomicCounters = 8,
-		.maxComputeAtomicCounterBuffers = 1,
-		.maxVaryingComponents = 60,
-		.maxVertexOutputComponents = 64,
-		.maxGeometryInputComponents = 64,
-		.maxGeometryOutputComponents = 128,
-		.maxFragmentInputComponents = 128,
-		.maxImageUnits = 8,
-		.maxCombinedImageUnitsAndFragmentOutputs = 8,
-		.maxCombinedShaderOutputResources = 8,
-		.maxImageSamples = 0,
-		.maxVertexImageUniforms = 0,
-		.maxTessControlImageUniforms = 0,
-		.maxTessEvaluationImageUniforms = 0,
-		.maxGeometryImageUniforms = 0,
-		.maxFragmentImageUniforms = 8,
-		.maxCombinedImageUniforms = 8,
-		.maxGeometryTextureImageUnits = 16,
-		.maxGeometryOutputVertices = 256,
-		.maxGeometryTotalOutputComponents = 1024,
-		.maxGeometryUniformComponents = 1024,
-		.maxGeometryVaryingComponents = 64,
-		.maxTessControlInputComponents = 128,
-		.maxTessControlOutputComponents = 128,
-		.maxTessControlTextureImageUnits = 16,
-		.maxTessControlUniformComponents = 1024,
-		.maxTessControlTotalOutputComponents = 4096,
-		.maxTessEvaluationInputComponents = 128,
-		.maxTessEvaluationOutputComponents = 128,
-		.maxTessEvaluationTextureImageUnits = 16,
-		.maxTessEvaluationUniformComponents = 1024,
-		.maxTessPatchComponents = 120,
-		.maxPatchVertices = 32,
-		.maxTessGenLevel = 64,
-		.maxViewports = 16,
-		.maxVertexAtomicCounters = 0,
-		.maxTessControlAtomicCounters = 0,
-		.maxTessEvaluationAtomicCounters = 0,
-		.maxGeometryAtomicCounters = 0,
-		.maxFragmentAtomicCounters = 8,
-		.maxCombinedAtomicCounters = 8,
-		.maxAtomicCounterBindings = 1,
-		.maxVertexAtomicCounterBuffers = 0,
-		.maxTessControlAtomicCounterBuffers = 0,
-		.maxTessEvaluationAtomicCounterBuffers = 0,
-		.maxGeometryAtomicCounterBuffers = 0,
-		.maxFragmentAtomicCounterBuffers = 1,
-		.maxCombinedAtomicCounterBuffers = 1,
-		.maxAtomicCounterBufferSize = 16384,
-		.maxTransformFeedbackBuffers = 4,
-		.maxTransformFeedbackInterleavedComponents = 64,
-		.maxCullDistances = 8,
-		.maxCombinedClipAndCullDistances = 8,
-		.maxSamples = 4,
-		.maxMeshOutputVerticesNV = 256,
-		.maxMeshOutputPrimitivesNV = 512,
-		.maxMeshWorkGroupSizeX_NV = 32,
-		.maxMeshWorkGroupSizeY_NV = 1,
-		.maxMeshWorkGroupSizeZ_NV = 1,
-		.maxTaskWorkGroupSizeX_NV = 32,
-		.maxTaskWorkGroupSizeY_NV = 1,
-		.maxTaskWorkGroupSizeZ_NV = 1,
-		.maxMeshViewCountNV = 4,
-		.limits{
-			.nonInductiveForLoops = 1,
-			.whileLoops = 1,
-			.doWhileLoops = 1,
-			.generalUniformIndexing = 1,
-			.generalAttributeMatrixVectorIndexing = 1,
-			.generalVaryingIndexing = 1,
-			.generalSamplerIndexing = 1,
-			.generalVariableIndexing = 1,
-			.generalConstantMatrixVectorIndexing = 1,
-		},
-	};
-}
-static std::vector<std::uint32_t> glsl_to_spv(vk::ShaderStageFlagBits shader_stage, const std::string &glsl_code) {
-	auto translate_shader_stage = [](vk::ShaderStageFlagBits stage) -> EShLanguage {
-		switch (stage) {
-		case vk::ShaderStageFlagBits::eVertex: return EShLangVertex;
-		case vk::ShaderStageFlagBits::eTessellationControl: return EShLangTessControl;
-		case vk::ShaderStageFlagBits::eTessellationEvaluation: return EShLangTessEvaluation;
-		case vk::ShaderStageFlagBits::eGeometry: return EShLangGeometry;
-		case vk::ShaderStageFlagBits::eFragment: return EShLangFragment;
-		case vk::ShaderStageFlagBits::eCompute: return EShLangCompute;
-		case vk::ShaderStageFlagBits::eRaygenNV: return EShLangRayGenNV;
-		case vk::ShaderStageFlagBits::eAnyHitNV: return EShLangAnyHitNV;
-		case vk::ShaderStageFlagBits::eClosestHitNV: return EShLangClosestHitNV;
-		case vk::ShaderStageFlagBits::eMissNV: return EShLangMissNV;
-		case vk::ShaderStageFlagBits::eIntersectionNV: return EShLangIntersectNV;
-		case vk::ShaderStageFlagBits::eCallableNV: return EShLangCallableNV;
-		case vk::ShaderStageFlagBits::eTaskNV: return EShLangTaskNV;
-		case vk::ShaderStageFlagBits::eMeshNV: return EShLangMeshNV;
-		default: throw std::runtime_error("Unknown shader stage");
-		}
-	};
-	auto stage = translate_shader_stage(shader_stage);
-	const char *shader_strings[] = {glsl_code.c_str()};
-	glslang::TShader shader(stage);
-	shader.setStrings(shader_strings, 1);
-	auto messages = static_cast<EShMessages>(EShMsgSpvRules | EShMsgVulkanRules);
-	TBuiltInResource resource = get_resource();
-	if (!shader.parse(&resource, 100, false, messages))
-		throw std::runtime_error(fmt::format("{}\n{}", shader.getInfoLog(), shader.getInfoDebugLog()).c_str());
-	glslang::TProgram program;
-	program.addShader(&shader);
-	if (!program.link(messages))
-		throw std::runtime_error(fmt::format("{}\n{}", shader.getInfoLog(), shader.getInfoDebugLog()).c_str());
-	std::vector<std::uint32_t> spv_result;
-	glslang::GlslangToSpv(*program.getIntermediate(stage), spv_result);
-	return spv_result;
-}
-static std::string text_file_to_string(const std::filesystem::path &filepath) {
-	std::ifstream source_file(filepath);
-	std::string source_str;
-	if (source_file.is_open()) {
-		source_file.seekg(0, std::ios::end);
-		source_str.reserve(source_file.tellg());
-		source_file.seekg(0, std::ios::beg);
-		source_str.assign(
-			std::istreambuf_iterator<char>(source_file),
-			std::istreambuf_iterator<char>());
-		source_file.close();
-	} else {
-		auto message = fmt::format("Failed to open shader file {} in {}", filepath.string(), std::filesystem::current_path().string());
-		throw std::runtime_error(message.c_str());
-	}
-	return source_str;
-}
-static std::vector<std::uint32_t> load_glsl_shader_to_spv(const std::filesystem::path &filepath) {
-	auto source_string = text_file_to_string(filepath);
-	vk::ShaderStageFlagBits shader_stage;
-
-	if (filepath.extension() == ".vert") {
-		shader_stage = vk::ShaderStageFlagBits::eVertex;
-	} else if (filepath.extension() == ".frag") {
-		shader_stage = vk::ShaderStageFlagBits::eFragment;
-	} else {
-		throw std::runtime_error(fmt::format("Attempting to load a currently unsupported shader file stage '{}'", filepath.extension().string()).c_str());
-	}
-
-	return glsl_to_spv(shader_stage, source_string);
-}
 
 struct QueueFamilyIndices {
 	std::optional<std::size_t> graphics, presentation;
@@ -344,8 +167,8 @@ vk::RenderPass createRenderpass(vk::Device logicalDevice, vk::Format swapchainFo
 
 std::pair<vk::Pipeline, vk::PipelineLayout> createGraphicsPipeline(vk::Device logical_device, vk::RenderPass renderpass, std::size_t vertexSize) {
 	glslang::InitializeProcess();
-	auto vert_spv = load_glsl_shader_to_spv("samples/hello-triangle/main.vert");
-	auto frag_spv = load_glsl_shader_to_spv("samples/hello-triangle/main.frag");
+	auto vert_spv = loadGlslShaderToSpv("samples/shared/hello-triangle/main.vert");
+	auto frag_spv = loadGlslShaderToSpv("samples/shared/hello-triangle/main.frag");
 	glslang::FinalizeProcess();
 	auto vert_shader_module = logical_device.createShaderModule({.codeSize = vert_spv.size() * sizeof(vert_spv[0]), .pCode = vert_spv.data()});
 	auto frag_shader_module = logical_device.createShaderModule({.codeSize = frag_spv.size() * sizeof(frag_spv[0]), .pCode = frag_spv.data()});
@@ -463,50 +286,47 @@ std::vector<vk::Framebuffer> createFramebuffers(vk::Device logicalDevice, const 
 	return framebuffers;
 }
 
-class ResizableHelloTriangleApp : public Window {
+struct HelloTriangle {
 	vk::Instance vulkanInstance;
 	vk::DebugUtilsMessengerEXT debugMessenger;
-
 	vk::SurfaceKHR vulkanWindowSurface = nullptr;
-
 	vk::PhysicalDevice selectedPhysicalDevice;
 	vk::Device logicalDevice;
 	QueueFamilyIndices queueIndices;
 	vk::Queue graphicsQueue, presentQueue;
-
 	struct TriangleVertex {
 		glm::vec2 pos;
 		glm::vec4 col;
 	};
+	TriangleVertex vertexData[3]{
+		// clang-format off
+        {.pos = { 0.5f,  0.5f}, .col = {1, 0, 0, 1}}, // bottom right (red)
+        {.pos = {-0.5f,  0.5f}, .col = {0, 1, 0, 1}}, // bottom left  (green)
+        {.pos = { 0.0f, -0.5f}, .col = {0, 0, 1, 1}}, // top middle   (blue)
+		// clang-format on
+	};
 	vk::Buffer vertexbuffer;
 	vk::DeviceMemory vertexbufferMemory;
-
 	vk::SwapchainKHR swapchain;
 	SwapchainDetails swapchainDetails;
 	std::vector<vk::Image> swapchainImages;
 	std::vector<vk::ImageView> swapchainImageViews;
-
 	vk::Pipeline graphicsPipeline;
 	vk::PipelineLayout graphicsPipelineLayout;
 	std::vector<vk::Framebuffer> framebuffers;
-
 	vk::RenderPass renderpass;
-
 	vk::CommandPool graphicsCommandPool;
 	vk::CommandBuffer graphicsCommandBuffer;
 
-	int frameSizeX = 800, frameSizeY = 600;
+	int frameSizeX, frameSizeY;
 
-public:
-	ResizableHelloTriangleApp() : Window({.frameSizeX = 800, .frameSizeY = 600, .title = "Resizable Hello Triangle"}) {
-		// instance creation
+	void initInstance() {
 		vulkanInstance = vkh::createInstance({}, {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, "VK_KHR_surface", "VK_KHR_win32_surface"});
 		// enable debug messenger for validation layers
 		debugMessenger = vkh::createDebugMessenger(vulkanInstance);
-		// create vulkan surface
-		vulkanWindowSurface = Window::createVulkanSurface(vulkanInstance);
+	}
 
-		// device creation
+	void initDevice() {
 		std::vector<const char *> deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 		// physical device selection
 		selectedPhysicalDevice = vkh::selectPhysicalDevice(vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
@@ -544,15 +364,9 @@ public:
 		// queue retrieval
 		graphicsQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.graphics.value()), 0);
 		presentQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.presentation.value()), 0);
+	}
 
-		// Triangle Data
-		TriangleVertex vertexData[]{
-			// clang-format off
-            {.pos = { 0.5f,  0.5f}, .col = {1, 0, 0, 1}}, // bottom right (red)
-            {.pos = {-0.5f,  0.5f}, .col = {0, 1, 0, 1}}, // bottom left  (green)
-            {.pos = { 0.0f, -0.5f}, .col = {0, 0, 1, 1}}, // top middle   (blue)
-			// clang-format on
-		};
+	void initVertexbuffer() {
 		vertexbuffer = logicalDevice.createBuffer({.size = sizeof(vertexData), .usage = vk::BufferUsageFlagBits::eVertexBuffer});
 		auto vertexbufferMemoryRequirements = logicalDevice.getBufferMemoryRequirements(vertexbuffer);
 		auto vertexbufferMemoryTypeIndex = vkh::findMemoryTypeIndex(
@@ -567,9 +381,21 @@ public:
 		auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice.mapMemory(vertexbufferMemory, 0, vertexbufferMemoryRequirements.size));
 		std::memcpy(vertexbufferDeviceDataPtr, vertexData, sizeof(vertexData));
 		logicalDevice.unmapMemory(vertexbufferMemory);
+	}
 
-		initSwapchain();
+	void initSwapchain() {
+		auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
+		swapchain = std::get<0>(createSwapchainResult);
+		swapchainDetails = std::get<1>(createSwapchainResult);
+		swapchainImages = logicalDevice.getSwapchainImagesKHR(swapchain);
+		swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, logicalDevice);
+	}
 
+	void initFramebuffers() {
+		framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
+	}
+
+	void initPipeline() {
 		renderpass = createRenderpass(logicalDevice, swapchainDetails.format);
 		auto createGraphicsPipelineResult = createGraphicsPipeline(logicalDevice, renderpass, sizeof(TriangleVertex));
 		graphicsPipeline = std::get<0>(createGraphicsPipelineResult);
@@ -584,8 +410,8 @@ public:
 		graphicsCommandBuffer = logicalDevice.allocateCommandBuffers({.commandPool = graphicsCommandPool, .commandBufferCount = 1}).front();
 	}
 
-	~ResizableHelloTriangleApp() {
-		cleanSwapchain();
+	void deinit() {
+		deinitSwapchain();
 
 		if (vulkanInstance) {
 			if (logicalDevice) {
@@ -612,21 +438,7 @@ public:
 		}
 	}
 
-	void initSwapchain() {
-		if (!vulkanWindowSurface) {
-			vulkanWindowSurface = Window::createVulkanSurface(vulkanInstance);
-			if (!selectedPhysicalDevice.getSurfaceSupportKHR(static_cast<std::uint32_t>(queueIndices.presentation.value()), vulkanWindowSurface))
-				throw std::runtime_error("new surface does not support presentation on the previous queue index");
-		}
-
-		auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
-		swapchain = std::get<0>(createSwapchainResult);
-		swapchainDetails = std::get<1>(createSwapchainResult);
-		swapchainImages = logicalDevice.getSwapchainImagesKHR(swapchain);
-		swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, logicalDevice);
-	}
-
-	void cleanSwapchain() {
+	void deinitSwapchain() {
 		if (vulkanInstance && logicalDevice) {
 			if (graphicsCommandBuffer)
 				logicalDevice.freeCommandBuffers(graphicsCommandPool, graphicsCommandBuffer);
@@ -651,7 +463,7 @@ public:
 		auto imageAcquiredSemaphore = logicalDevice.createSemaphore({});
 		auto currentFramebuffer = logicalDevice.acquireNextImageKHR(swapchain, 100000000 /* fence timeout */, imageAcquiredSemaphore, nullptr);
 		if (currentFramebuffer.result == vk::Result::eErrorOutOfDateKHR) {
-			MessageBox(nullptr, "OUT OF DATE", "", MB_OK);
+			throw std::runtime_error("Swapchain OUT OF DATE");
 		} else {
 			if (currentFramebuffer.result != vk::Result::eSuccess)
 				throw std::runtime_error("failed to acquire next swapchain image");
@@ -702,50 +514,4 @@ public:
 		logicalDevice.destroyFence(drawFence);
 		logicalDevice.destroySemaphore(imageAcquiredSemaphore);
 	}
-
-	void onResize(int sizeX, int sizeY) {
-		frameSizeX = sizeX;
-		frameSizeY = sizeY;
-
-		logicalDevice.waitIdle();
-
-		cleanSwapchain();
-		initSwapchain();
-		framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
-
-		draw();
-	}
 };
-
-int main() try {
-
-	ResizableHelloTriangleApp app;
-
-	using namespace std::chrono_literals;
-	auto t0 = std::chrono::high_resolution_clock::now();
-	std::size_t frameCount = 0;
-
-	while (true) {
-		++frameCount;
-		auto now = std::chrono::high_resolution_clock::now();
-
-		if (now - t0 > 1s) {
-			t0 = now;
-			fmt::print("frames/s: {}\n", frameCount);
-			frameCount = 0;
-		}
-
-		app.handleEvents();
-		if (!app.isOpen())
-			break;
-
-		app.draw();
-	}
-
-} catch (const vk::SystemError &e) {
-	MessageBox(nullptr, e.what(), "vk::SystemError", MB_OK);
-} catch (const std::exception &e) {
-	MessageBox(nullptr, e.what(), "std::exception", MB_OK);
-} catch (...) {
-	MessageBox(nullptr, "no details available", "Unknown exception", MB_OK);
-}
