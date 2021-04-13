@@ -515,7 +515,7 @@ int main() try {
 	// Triangle Data
 	struct TriangleVertex {
 		glm::vec2 pos;
-        glm::vec4 col;
+		glm::vec4 col;
 	};
 	TriangleVertex vertexData[]{
 		// clang-format off
@@ -560,63 +560,63 @@ int main() try {
 			window.handleEvents();
 			if (!window.isOpen())
 				break;
-            // prepare frame for drawing
-            auto imageAcquiredSemaphore = logicalDevice.createSemaphore({});
-            auto currentFramebuffer = logicalDevice.acquireNextImageKHR(swapchain, 100000000 /* fence timeout */, imageAcquiredSemaphore, nullptr);
-            if (currentFramebuffer.result == vk::Result::eErrorOutOfDateKHR) {
-                MessageBox(nullptr, "OUT OF DATE", "", MB_OK);
-            } else {
-                if (currentFramebuffer.result != vk::Result::eSuccess)
-                    throw std::runtime_error("failed to acquire next swapchain image");
-                if (currentFramebuffer.value >= framebuffers.size())
-                    throw std::runtime_error("grabbed an invalid framebuffer index");
-            }
-            // prepare frame clear values
-            std::array<vk::ClearValue, 2> clearValues;
-            clearValues[0].color = vk::ClearColorValue(std::array<float, 4>({{0.2f, 0.2f, 0.2f, 0.2f}}));
-            clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
-            // set up command buffer
-            graphicsCommandBuffer.begin(vk::CommandBufferBeginInfo{});
-            graphicsCommandBuffer.beginRenderPass(
-                {
-                    .renderPass = renderpass,
-                    .framebuffer = framebuffers[currentFramebuffer.value],
-                    .renderArea = vk::Rect2D(vk::Offset2D(0, 0), swapchainDetails.extent),
-                    .clearValueCount = static_cast<std::uint32_t>(clearValues.size()),
-                    .pClearValues = clearValues.data(),
-                },
-                vk::SubpassContents::eInline);
-            graphicsCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-            graphicsCommandBuffer.bindVertexBuffers(0, vertexbuffer, {0});
+			// prepare frame for drawing
+			auto imageAcquiredSemaphore = logicalDevice.createSemaphore({});
+			auto currentFramebuffer = logicalDevice.acquireNextImageKHR(swapchain, 100000000 /* fence timeout */, imageAcquiredSemaphore, nullptr);
+			if (currentFramebuffer.result == vk::Result::eErrorOutOfDateKHR) {
+				MessageBox(nullptr, "OUT OF DATE", "", MB_OK);
+			} else {
+				if (currentFramebuffer.result != vk::Result::eSuccess)
+					throw std::runtime_error("failed to acquire next swapchain image");
+				if (currentFramebuffer.value >= framebuffers.size())
+					throw std::runtime_error("grabbed an invalid framebuffer index");
+			}
+			// prepare frame clear values
+			std::array<vk::ClearValue, 2> clearValues;
+			clearValues[0].color = vk::ClearColorValue(std::array<float, 4>({{0.2f, 0.2f, 0.2f, 0.2f}}));
+			clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+			// set up command buffer
+			graphicsCommandBuffer.begin(vk::CommandBufferBeginInfo{});
+			graphicsCommandBuffer.beginRenderPass(
+				{
+					.renderPass = renderpass,
+					.framebuffer = framebuffers[currentFramebuffer.value],
+					.renderArea = vk::Rect2D(vk::Offset2D(0, 0), swapchainDetails.extent),
+					.clearValueCount = static_cast<std::uint32_t>(clearValues.size()),
+					.pClearValues = clearValues.data(),
+				},
+				vk::SubpassContents::eInline);
+			graphicsCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+			graphicsCommandBuffer.bindVertexBuffers(0, vertexbuffer, {0});
 
-            graphicsCommandBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, swapchainDetails.extent.width, swapchainDetails.extent.height, 0.0f, 1.0f));
-            graphicsCommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), {swapchainDetails.extent.width, swapchainDetails.extent.height}));
-            graphicsCommandBuffer.draw(1 * 3, 1, 0, 0);
+			graphicsCommandBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainDetails.extent.width), static_cast<float>(swapchainDetails.extent.height), 0.0f, 1.0f));
+			graphicsCommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), {swapchainDetails.extent.width, swapchainDetails.extent.height}));
+			graphicsCommandBuffer.draw(1 * 3, 1, 0, 0);
 
-            graphicsCommandBuffer.endRenderPass();
-            graphicsCommandBuffer.end();
+			graphicsCommandBuffer.endRenderPass();
+			graphicsCommandBuffer.end();
 
-            // submit command buffer to graphics queue
-            auto drawFence = logicalDevice.createFence({});
-            graphicsQueue.submit({{.commandBufferCount = 1, .pCommandBuffers = &graphicsCommandBuffer}}, drawFence);
-            while (vk::Result::eTimeout == logicalDevice.waitForFences(drawFence, VK_TRUE, 100000000 /* fence timeout */)) {
-                // wait
-            }
+			// submit command buffer to graphics queue
+			auto drawFence = logicalDevice.createFence({});
+			graphicsQueue.submit({{.commandBufferCount = 1, .pCommandBuffers = &graphicsCommandBuffer}}, drawFence);
+			while (vk::Result::eTimeout == logicalDevice.waitForFences(drawFence, VK_TRUE, 100000000 /* fence timeout */)) {
+				// wait
+			}
 
-            auto presentResult = presentQueue.presentKHR({
-                .swapchainCount = 1,
-                .pSwapchains = &swapchain,
-                .pImageIndices = &currentFramebuffer.value,
-            });
+			auto presentResult = presentQueue.presentKHR({
+				.swapchainCount = 1,
+				.pSwapchains = &swapchain,
+				.pImageIndices = &currentFramebuffer.value,
+			});
 
-            if (presentResult != vk::Result::eSuccess)
-                throw std::runtime_error("Failed to execute present queue");
+			if (presentResult != vk::Result::eSuccess)
+				throw std::runtime_error("Failed to execute present queue");
 
-            logicalDevice.destroyFence(drawFence);
-            logicalDevice.destroySemaphore(imageAcquiredSemaphore);
+			logicalDevice.destroyFence(drawFence);
+			logicalDevice.destroySemaphore(imageAcquiredSemaphore);
 		}
 
-        logicalDevice.freeCommandBuffers(graphicsCommandPool, graphicsCommandBuffer);
+		logicalDevice.freeCommandBuffers(graphicsCommandPool, graphicsCommandBuffer);
 		logicalDevice.destroyCommandPool(graphicsCommandPool);
 	}
 

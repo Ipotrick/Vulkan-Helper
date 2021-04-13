@@ -464,273 +464,283 @@ std::vector<vk::Framebuffer> createFramebuffers(vk::Device logicalDevice, const 
 }
 
 class ResizableHelloTriangleApp : public Window {
-    vk::Instance vulkanInstance;
-    vk::DebugUtilsMessengerEXT debugMessenger;
+	vk::Instance vulkanInstance;
+	vk::DebugUtilsMessengerEXT debugMessenger;
 
-    vk::SurfaceKHR vulkanWindowSurface = nullptr;
+	vk::SurfaceKHR vulkanWindowSurface = nullptr;
 
-    vk::PhysicalDevice selectedPhysicalDevice;
-    vk::Device logicalDevice;
-    QueueFamilyIndices queueIndices;
-    vk::Queue graphicsQueue, presentQueue;
+	vk::PhysicalDevice selectedPhysicalDevice;
+	vk::Device logicalDevice;
+	QueueFamilyIndices queueIndices;
+	vk::Queue graphicsQueue, presentQueue;
 
-    struct TriangleVertex {
-        glm::vec2 pos;
-        glm::vec4 col;
-    };
-    vk::Buffer vertexbuffer;
-    vk::DeviceMemory vertexbufferMemory;
+	struct TriangleVertex {
+		glm::vec2 pos;
+		glm::vec4 col;
+	};
+	vk::Buffer vertexbuffer;
+	vk::DeviceMemory vertexbufferMemory;
 
-    vk::SwapchainKHR swapchain;
-    SwapchainDetails swapchainDetails;
-    std::vector<vk::Image> swapchainImages;
-    std::vector<vk::ImageView> swapchainImageViews;
+	vk::SwapchainKHR swapchain;
+	SwapchainDetails swapchainDetails;
+	std::vector<vk::Image> swapchainImages;
+	std::vector<vk::ImageView> swapchainImageViews;
 
-    vk::Pipeline graphicsPipeline;
-    vk::PipelineLayout graphicsPipelineLayout;
-    std::vector<vk::Framebuffer> framebuffers;
+	vk::Pipeline graphicsPipeline;
+	vk::PipelineLayout graphicsPipelineLayout;
+	std::vector<vk::Framebuffer> framebuffers;
 
-    vk::RenderPass renderpass;
+	vk::RenderPass renderpass;
 
-    vk::CommandPool graphicsCommandPool;
-    vk::CommandBuffer graphicsCommandBuffer;
+	vk::CommandPool graphicsCommandPool;
+	vk::CommandBuffer graphicsCommandBuffer;
 
-    int frameSizeX = 800, frameSizeY = 600;
+	int frameSizeX = 800, frameSizeY = 600;
 
 public:
-    ResizableHelloTriangleApp() : Window({.frameSizeX = 800, .frameSizeY = 600, .title = "Resizable Hello Triangle"}) {
-        // instance creation
-        vulkanInstance = vkh::createInstance({}, {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, "VK_KHR_surface", "VK_KHR_win32_surface"});
-        // enable debug messenger for validation layers
-        debugMessenger = vkh::createDebugMessenger(vulkanInstance);
-        // create vulkan surface
-        vulkanWindowSurface = Window::createVulkanSurface(vulkanInstance);
+	ResizableHelloTriangleApp() : Window({.frameSizeX = 800, .frameSizeY = 600, .title = "Resizable Hello Triangle"}) {
+		// instance creation
+		vulkanInstance = vkh::createInstance({}, {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, "VK_KHR_surface", "VK_KHR_win32_surface"});
+		// enable debug messenger for validation layers
+		debugMessenger = vkh::createDebugMessenger(vulkanInstance);
+		// create vulkan surface
+		vulkanWindowSurface = Window::createVulkanSurface(vulkanInstance);
 
-        // device creation
-        std::vector<const char *> deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-        // physical device selection
-        selectedPhysicalDevice = vkh::selectPhysicalDevice(vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
-            std::size_t score = 0;
-            auto indices = findQueueFamilyIndices(device, vulkanWindowSurface);
-            auto deviceProperties = device.getProperties();
-            if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-                score += 1000;
-            score += deviceProperties.limits.maxUniformBufferRange;
-            score += deviceProperties.limits.maxStorageBufferRange;
-            auto deviceFeatures = device.getFeatures();
-            if (!deviceFeatures.geometryShader)
-                return 0;
-            if (!indices.complete())
-                return 0;
-            std::set<std::string> requiredExtensionsSet(deviceExtensions.begin(), deviceExtensions.end());
-            auto deviceExtensionProperties = device.enumerateDeviceExtensionProperties();
-            for (const auto &availableExtension : deviceExtensionProperties)
-                requiredExtensionsSet.erase(availableExtension.extensionName);
-            if (!requiredExtensionsSet.empty())
-                return 0;
-            auto surface_formats = device.getSurfaceFormatsKHR(vulkanWindowSurface);
-            auto present_modes = device.getSurfacePresentModesKHR(vulkanWindowSurface);
-            if (present_modes.empty() || surface_formats.empty())
-                return 0;
-            return score;
-        });
+		// device creation
+		std::vector<const char *> deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+		// physical device selection
+		selectedPhysicalDevice = vkh::selectPhysicalDevice(vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
+			std::size_t score = 0;
+			auto indices = findQueueFamilyIndices(device, vulkanWindowSurface);
+			auto deviceProperties = device.getProperties();
+			if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+				score += 1000;
+			score += deviceProperties.limits.maxUniformBufferRange;
+			score += deviceProperties.limits.maxStorageBufferRange;
+			auto deviceFeatures = device.getFeatures();
+			if (!deviceFeatures.geometryShader)
+				return 0;
+			if (!indices.complete())
+				return 0;
+			std::set<std::string> requiredExtensionsSet(deviceExtensions.begin(), deviceExtensions.end());
+			auto deviceExtensionProperties = device.enumerateDeviceExtensionProperties();
+			for (const auto &availableExtension : deviceExtensionProperties)
+				requiredExtensionsSet.erase(availableExtension.extensionName);
+			if (!requiredExtensionsSet.empty())
+				return 0;
+			auto surface_formats = device.getSurfaceFormatsKHR(vulkanWindowSurface);
+			auto present_modes = device.getSurfacePresentModesKHR(vulkanWindowSurface);
+			if (present_modes.empty() || surface_formats.empty())
+				return 0;
+			return score;
+		});
 
-        auto selectedPhysicalDeviceProperties = selectedPhysicalDevice.getProperties();
-        fmt::print("Selected Physical Device: {}\n", selectedPhysicalDeviceProperties.deviceName);
+		auto selectedPhysicalDeviceProperties = selectedPhysicalDevice.getProperties();
+		fmt::print("Selected Physical Device: {}\n", selectedPhysicalDeviceProperties.deviceName);
 
-        queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
-        // logical device creation
-        logicalDevice = vkh::createLogicalDevice(selectedPhysicalDevice, queueIndices.uniqueIndices(), deviceExtensions);
-        // queue retrieval
-        graphicsQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.graphics.value()), 0);
-        presentQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.presentation.value()), 0);
+		queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
+		// logical device creation
+		logicalDevice = vkh::createLogicalDevice(selectedPhysicalDevice, queueIndices.uniqueIndices(), deviceExtensions);
+		// queue retrieval
+		graphicsQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.graphics.value()), 0);
+		presentQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.presentation.value()), 0);
 
-        // Triangle Data
-        TriangleVertex vertexData[]{
-            // clang-format off
+		// Triangle Data
+		TriangleVertex vertexData[]{
+			// clang-format off
             {.pos = { 0.5f,  0.5f}, .col = {1, 0, 0, 1}}, // bottom right (red)
             {.pos = {-0.5f,  0.5f}, .col = {0, 1, 0, 1}}, // bottom left  (green)
             {.pos = { 0.0f, -0.5f}, .col = {0, 0, 1, 1}}, // top middle   (blue)
-            // clang-format on
-        };
-        vertexbuffer = logicalDevice.createBuffer({.size = sizeof(vertexData), .usage = vk::BufferUsageFlagBits::eVertexBuffer});
-        auto vertexbufferMemoryRequirements = logicalDevice.getBufferMemoryRequirements(vertexbuffer);
-        auto vertexbufferMemoryTypeIndex = vkh::findMemoryTypeIndex(
-            selectedPhysicalDevice.getMemoryProperties(),
-            vertexbufferMemoryRequirements.memoryTypeBits,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-        vertexbufferMemory = logicalDevice.allocateMemory({
-            .allocationSize = vertexbufferMemoryRequirements.size,
-            .memoryTypeIndex = vertexbufferMemoryTypeIndex,
-        });
-        logicalDevice.bindBufferMemory(vertexbuffer, vertexbufferMemory, 0);
-        auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice.mapMemory(vertexbufferMemory, 0, vertexbufferMemoryRequirements.size));
-        std::memcpy(vertexbufferDeviceDataPtr, vertexData, sizeof(vertexData));
-        logicalDevice.unmapMemory(vertexbufferMemory);
-        
-        // swapchain creation
-        auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
-        swapchain = std::get<0>(createSwapchainResult);
-        swapchainDetails = std::get<1>(createSwapchainResult);
-        swapchainImages = logicalDevice.getSwapchainImagesKHR(swapchain);
-        swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, logicalDevice);
+			// clang-format on
+		};
+		vertexbuffer = logicalDevice.createBuffer({.size = sizeof(vertexData), .usage = vk::BufferUsageFlagBits::eVertexBuffer});
+		auto vertexbufferMemoryRequirements = logicalDevice.getBufferMemoryRequirements(vertexbuffer);
+		auto vertexbufferMemoryTypeIndex = vkh::findMemoryTypeIndex(
+			selectedPhysicalDevice.getMemoryProperties(),
+			vertexbufferMemoryRequirements.memoryTypeBits,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		vertexbufferMemory = logicalDevice.allocateMemory({
+			.allocationSize = vertexbufferMemoryRequirements.size,
+			.memoryTypeIndex = vertexbufferMemoryTypeIndex,
+		});
+		logicalDevice.bindBufferMemory(vertexbuffer, vertexbufferMemory, 0);
+		auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice.mapMemory(vertexbufferMemory, 0, vertexbufferMemoryRequirements.size));
+		std::memcpy(vertexbufferDeviceDataPtr, vertexData, sizeof(vertexData));
+		logicalDevice.unmapMemory(vertexbufferMemory);
 
-        renderpass = createRenderpass(logicalDevice, swapchainDetails.format);
-        auto createGraphicsPipelineResult = createGraphicsPipeline(logicalDevice, renderpass, sizeof(TriangleVertex));
-        graphicsPipeline = std::get<0>(createGraphicsPipelineResult);
-        graphicsPipelineLayout = std::get<1>(createGraphicsPipelineResult);
-        framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
+		initSwapchain();
 
-        graphicsCommandPool = logicalDevice.createCommandPool({
-            .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-            .queueFamilyIndex = static_cast<std::uint32_t>(queueIndices.graphics.value()),
-        });
-        graphicsCommandBuffer = logicalDevice.allocateCommandBuffers({.commandPool = graphicsCommandPool, .commandBufferCount = 1}).front();
-    }
+		renderpass = createRenderpass(logicalDevice, swapchainDetails.format);
+		auto createGraphicsPipelineResult = createGraphicsPipeline(logicalDevice, renderpass, sizeof(TriangleVertex));
+		graphicsPipeline = std::get<0>(createGraphicsPipelineResult);
+		graphicsPipelineLayout = std::get<1>(createGraphicsPipelineResult);
 
-    ~ResizableHelloTriangleApp() {
-        cleanSwapchain();
+		framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
 
-        if (vulkanInstance) {
-            if (logicalDevice) {
-                if (graphicsCommandPool)
-                    logicalDevice.destroyCommandPool(graphicsCommandPool);
+		graphicsCommandPool = logicalDevice.createCommandPool({
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = static_cast<std::uint32_t>(queueIndices.graphics.value()),
+		});
+		graphicsCommandBuffer = logicalDevice.allocateCommandBuffers({.commandPool = graphicsCommandPool, .commandBufferCount = 1}).front();
+	}
 
-                if (graphicsPipelineLayout)
-                    logicalDevice.destroyPipelineLayout(graphicsPipelineLayout);
-                if (graphicsPipeline)
-                    logicalDevice.destroyPipeline(graphicsPipeline);
-                if (renderpass)
-                    logicalDevice.destroyRenderPass(renderpass);
+	~ResizableHelloTriangleApp() {
+		cleanSwapchain();
 
-                if (vertexbufferMemory)
-                    logicalDevice.freeMemory(vertexbufferMemory);
-                if (vertexbuffer)
-                    logicalDevice.destroyBuffer(vertexbuffer);
-                logicalDevice.destroy();
-            }
+		if (vulkanInstance) {
+			if (logicalDevice) {
+				if (graphicsCommandPool)
+					logicalDevice.destroyCommandPool(graphicsCommandPool);
 
-            if (debugMessenger)
-                vulkanInstance.destroyDebugUtilsMessengerEXT(debugMessenger);
-            vulkanInstance.destroy();
-        }
-    }
+				if (graphicsPipelineLayout)
+					logicalDevice.destroyPipelineLayout(graphicsPipelineLayout);
+				if (graphicsPipeline)
+					logicalDevice.destroyPipeline(graphicsPipeline);
+				if (renderpass)
+					logicalDevice.destroyRenderPass(renderpass);
 
-    void initSwapchain() {
-        if (!vulkanWindowSurface) {
-            vulkanWindowSurface = Window::createVulkanSurface(vulkanInstance);
-            if (!selectedPhysicalDevice.getSurfaceSupportKHR(static_cast<std::uint32_t>(queueIndices.presentation.value()), vulkanWindowSurface))
-                throw std::runtime_error("new surface does not support presentation on the previous queue index");
-        }
+				if (vertexbufferMemory)
+					logicalDevice.freeMemory(vertexbufferMemory);
+				if (vertexbuffer)
+					logicalDevice.destroyBuffer(vertexbuffer);
+				logicalDevice.destroy();
+			}
 
-        auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
-        swapchain = std::get<0>(createSwapchainResult);
-        swapchainDetails = std::get<1>(createSwapchainResult);
-        swapchainImages = logicalDevice.getSwapchainImagesKHR(swapchain);
-        swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, logicalDevice);
+			if (debugMessenger)
+				vulkanInstance.destroyDebugUtilsMessengerEXT(debugMessenger);
+			vulkanInstance.destroy();
+		}
+	}
 
-        framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
-    }
+	void initSwapchain() {
+		if (!vulkanWindowSurface) {
+			vulkanWindowSurface = Window::createVulkanSurface(vulkanInstance);
+			if (!selectedPhysicalDevice.getSurfaceSupportKHR(static_cast<std::uint32_t>(queueIndices.presentation.value()), vulkanWindowSurface))
+				throw std::runtime_error("new surface does not support presentation on the previous queue index");
+		}
 
-    void cleanSwapchain() {
-        if (vulkanInstance && logicalDevice) {
-            if (graphicsCommandBuffer)
-                logicalDevice.freeCommandBuffers(graphicsCommandPool, graphicsCommandBuffer);
-            for (const auto &framebuffer : framebuffers)
-                if (framebuffer)
-                    logicalDevice.destroyFramebuffer(framebuffer);
-            framebuffers.clear();
-            for (auto &view : swapchainImageViews)
-                if (view)
-                    logicalDevice.destroyImageView(view);
-            swapchainImageViews.clear();
-            if (swapchain)
-                logicalDevice.destroySwapchainKHR(swapchain);
-            if (vulkanWindowSurface)
-                vulkanInstance.destroySurfaceKHR(vulkanWindowSurface);
-            vulkanWindowSurface = nullptr;
-        }
-    }
+		auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
+		swapchain = std::get<0>(createSwapchainResult);
+		swapchainDetails = std::get<1>(createSwapchainResult);
+		swapchainImages = logicalDevice.getSwapchainImagesKHR(swapchain);
+		swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, logicalDevice);
+	}
 
-    void draw() {
-        // prepare frame for drawing
-        auto imageAcquiredSemaphore = logicalDevice.createSemaphore({});
-        auto currentFramebuffer = logicalDevice.acquireNextImageKHR(swapchain, 100000000 /* fence timeout */, imageAcquiredSemaphore, nullptr);
-        if (currentFramebuffer.result == vk::Result::eErrorOutOfDateKHR) {
-            MessageBox(nullptr, "OUT OF DATE", "", MB_OK);
-        } else {
-            if (currentFramebuffer.result != vk::Result::eSuccess)
-                throw std::runtime_error("failed to acquire next swapchain image");
-            if (currentFramebuffer.value >= framebuffers.size())
-                throw std::runtime_error("grabbed an invalid framebuffer index");
-        }
-        // prepare frame clear values
-        std::array<vk::ClearValue, 2> clearValues;
-        clearValues[0].color = vk::ClearColorValue(std::array<float, 4>({{0.2f, 0.2f, 0.2f, 0.2f}}));
-        clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
-        // set up command buffer
-        graphicsCommandBuffer.begin(vk::CommandBufferBeginInfo{});
-        graphicsCommandBuffer.beginRenderPass(
-            {
-                .renderPass = renderpass,
-                .framebuffer = framebuffers[currentFramebuffer.value],
-                .renderArea = vk::Rect2D(vk::Offset2D(0, 0), swapchainDetails.extent),
-                .clearValueCount = static_cast<std::uint32_t>(clearValues.size()),
-                .pClearValues = clearValues.data(),
-            },
-            vk::SubpassContents::eInline);
-        graphicsCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-        graphicsCommandBuffer.bindVertexBuffers(0, vertexbuffer, {0});
+	void cleanSwapchain() {
+		if (vulkanInstance && logicalDevice) {
+			if (graphicsCommandBuffer)
+				logicalDevice.freeCommandBuffers(graphicsCommandPool, graphicsCommandBuffer);
+			for (const auto &framebuffer : framebuffers)
+				if (framebuffer)
+					logicalDevice.destroyFramebuffer(framebuffer);
+			framebuffers.clear();
+			for (auto &view : swapchainImageViews)
+				if (view)
+					logicalDevice.destroyImageView(view);
+			swapchainImageViews.clear();
+			if (swapchain)
+				logicalDevice.destroySwapchainKHR(swapchain);
+			if (vulkanWindowSurface)
+				vulkanInstance.destroySurfaceKHR(vulkanWindowSurface);
+			vulkanWindowSurface = nullptr;
+		}
+	}
 
-        graphicsCommandBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, swapchainDetails.extent.width, swapchainDetails.extent.height, 0.0f, 1.0f));
-        graphicsCommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), {swapchainDetails.extent.width, swapchainDetails.extent.height}));
-        graphicsCommandBuffer.draw(1 * 3, 1, 0, 0);
+	void draw() {
+		// prepare frame for drawing
+		auto imageAcquiredSemaphore = logicalDevice.createSemaphore({});
+		auto currentFramebuffer = logicalDevice.acquireNextImageKHR(swapchain, 100000000 /* fence timeout */, imageAcquiredSemaphore, nullptr);
+		if (currentFramebuffer.result == vk::Result::eErrorOutOfDateKHR) {
+			MessageBox(nullptr, "OUT OF DATE", "", MB_OK);
+		} else {
+			if (currentFramebuffer.result != vk::Result::eSuccess)
+				throw std::runtime_error("failed to acquire next swapchain image");
+			if (currentFramebuffer.value >= framebuffers.size())
+				throw std::runtime_error("grabbed an invalid framebuffer index");
+		}
+		// prepare frame clear values
+		std::array<vk::ClearValue, 2> clearValues;
+		clearValues[0].color = vk::ClearColorValue(std::array<float, 4>({{0.2f, 0.2f, 0.2f, 0.2f}}));
+		clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+		// set up command buffer
+		graphicsCommandBuffer.begin(vk::CommandBufferBeginInfo{});
+		graphicsCommandBuffer.beginRenderPass(
+			{
+				.renderPass = renderpass,
+				.framebuffer = framebuffers[currentFramebuffer.value],
+				.renderArea = vk::Rect2D(vk::Offset2D(0, 0), swapchainDetails.extent),
+				.clearValueCount = static_cast<std::uint32_t>(clearValues.size()),
+				.pClearValues = clearValues.data(),
+			},
+			vk::SubpassContents::eInline);
+		graphicsCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+		graphicsCommandBuffer.bindVertexBuffers(0, vertexbuffer, {0});
 
-        graphicsCommandBuffer.endRenderPass();
-        graphicsCommandBuffer.end();
+		graphicsCommandBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainDetails.extent.width), static_cast<float>(swapchainDetails.extent.height), 0.0f, 1.0f));
+		graphicsCommandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), {swapchainDetails.extent.width, swapchainDetails.extent.height}));
+		graphicsCommandBuffer.draw(1 * 3, 1, 0, 0);
 
-        // submit command buffer to graphics queue
-        auto drawFence = logicalDevice.createFence({});
-        graphicsQueue.submit({{.commandBufferCount = 1, .pCommandBuffers = &graphicsCommandBuffer}}, drawFence);
-        while (vk::Result::eTimeout == logicalDevice.waitForFences(drawFence, VK_TRUE, 100000000 /* fence timeout */)) {
-            // wait
-        }
+		graphicsCommandBuffer.endRenderPass();
+		graphicsCommandBuffer.end();
 
-        auto presentResult = presentQueue.presentKHR({
-            .swapchainCount = 1,
-            .pSwapchains = &swapchain,
-            .pImageIndices = &currentFramebuffer.value,
-        });
+		// submit command buffer to graphics queue
+		auto drawFence = logicalDevice.createFence({});
+		graphicsQueue.submit({{.commandBufferCount = 1, .pCommandBuffers = &graphicsCommandBuffer}}, drawFence);
+		while (vk::Result::eTimeout == logicalDevice.waitForFences(drawFence, VK_TRUE, 100000000 /* fence timeout */)) {
+			// wait
+		}
 
-        if (presentResult != vk::Result::eSuccess)
-            throw std::runtime_error("Failed to execute present queue");
+		auto presentResult = presentQueue.presentKHR({
+			.swapchainCount = 1,
+			.pSwapchains = &swapchain,
+			.pImageIndices = &currentFramebuffer.value,
+		});
 
-        logicalDevice.destroyFence(drawFence);
-        logicalDevice.destroySemaphore(imageAcquiredSemaphore);
-    }
+		if (presentResult != vk::Result::eSuccess)
+			throw std::runtime_error("Failed to execute present queue");
 
-    void onResize(int sizeX, int sizeY) {
-        frameSizeX = sizeX;
-        frameSizeY = sizeY;
+		logicalDevice.destroyFence(drawFence);
+		logicalDevice.destroySemaphore(imageAcquiredSemaphore);
+	}
 
-        cleanSwapchain();
-        initSwapchain();
+	void onResize(int sizeX, int sizeY) {
+		frameSizeX = sizeX;
+		frameSizeY = sizeY;
 
-        draw();
-    }
+		logicalDevice.waitIdle();
+
+		cleanSwapchain();
+		initSwapchain();
+		framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
+
+		draw();
+	}
 };
 
 int main() try {
-    
-    ResizableHelloTriangleApp app;
 
-    while (true) {
-        app.handleEvents();
-        if (!app.isOpen())
-            break;
+	ResizableHelloTriangleApp app;
 
-        app.draw();
-    }
+	using namespace std::chrono_literals;
+	auto t0 = std::chrono::high_resolution_clock::now();
+	std::size_t frameCount = 0;
+
+	while (true) {
+		++frameCount;
+		auto now = std::chrono::high_resolution_clock::now();
+
+		if (now - t0 > 1s) {
+			t0 = now;
+			fmt::print("frames/s: {}\n", frameCount);
+			frameCount = 0;
+		}
+
+		app.handleEvents();
+		if (!app.isOpen())
+			break;
+
+		app.draw();
+	}
 
 } catch (const vk::SystemError &e) {
 	MessageBox(nullptr, e.what(), "vk::SystemError", MB_OK);

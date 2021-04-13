@@ -480,7 +480,7 @@ namespace vkh {
 
 	vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability);
 
-    std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask);
+	std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask);
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
 	vk::Instance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions) {
@@ -579,18 +579,18 @@ namespace vkh {
 		});
 	}
 
-    std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask) {
-        std::uint32_t type_index = std::uint32_t(~0);
-        for (std::uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i) {
-            if (typeBits & 1 && (memoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
-                type_index = i;
-                break;
-            }
-            typeBits >>= 1;
-        }
-        if (type_index == std::uint32_t(~0))
-            throw std::runtime_error("Unable to find suitable memory type index");
-        return type_index;
-    }
+	std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask) {
+		std::uint32_t type_index = std::uint32_t(~0);
+		for (std::uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+			if (typeBits & 1 && (memoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
+				type_index = i;
+				break;
+			}
+			typeBits >>= 1;
+		}
+		if (type_index == std::uint32_t(~0))
+			throw std::runtime_error("Unable to find suitable memory type index");
+		return type_index;
+	}
 #endif
 } // namespace vkh
