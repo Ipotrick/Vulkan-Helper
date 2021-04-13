@@ -624,7 +624,6 @@ int main() try {
 	for (const auto &framebuffer : framebuffers)
 		logicalDevice.destroyFramebuffer(framebuffer);
 	framebuffers.clear();
-	logicalDevice.destroyFramebuffer();
 	logicalDevice.destroyPipelineLayout(graphicsPipelineLayout);
 	logicalDevice.destroyPipeline(graphicsPipeline);
 	logicalDevice.destroyRenderPass(renderpass);
