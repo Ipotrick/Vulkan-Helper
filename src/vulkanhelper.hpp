@@ -44,7 +44,7 @@ namespace vkh {
 	class VertexDiscriptionBuilder {
 	public:
 		VertexDiscriptionBuilder &beginBinding(uint32_t stride, vk::VertexInputRate inputRate = vk::VertexInputRate::eVertex);
-		VertexDiscriptionBuilder &setAttribute(vk::Format format);
+		VertexDiscriptionBuilder &addAttribute(vk::Format format);
 		VertexDiscriptionBuilder &stageCreateFlags(vk::PipelineVertexInputStateCreateFlags flags);
 		VertexDescription build();
 
@@ -70,7 +70,7 @@ namespace vkh {
 		return *this;
 	}
 
-	VertexDiscriptionBuilder &VertexDiscriptionBuilder::setAttribute(vk::Format format) {
+	VertexDiscriptionBuilder &VertexDiscriptionBuilder::addAttribute(vk::Format format) {
 		vk::VertexInputAttributeDescription attribute{
 			.location = location,
 			.binding = static_cast<uint32_t>(bindings.size() - 1),
@@ -137,6 +137,21 @@ namespace vkh {
 
 	class PipelineBuilder {
 	public:
+		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0);
+
+		void setInitialViewPort(const vk::Viewport &viewport);
+		void setInitialScissor(const vk::Rect2D &scissor);
+		void setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput);
+		void setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputassembly);
+		void setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization);
+		void setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling);
+		void setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil);
+		//void setColorBlendAttachment(const vk::PipelineColorBlendAttachmentState &colorBlendAttachment);		dont understand color lbending in vulkan
+		void addShaderStages(const vk::PipelineShaderStageCreateInfo &shaderStage);
+		void addDynamicState(const vk::DynamicState &dynamicstates);
+		void addPushConstants(const vk::PushConstantRange &pushconstants);
+
+	private:
 		std::optional<vk::Viewport> viewport;
 		std::optional<vk::Rect2D> scissor;
 		std::optional<vk::PipelineVertexInputStateCreateInfo> vertexInput;
@@ -148,11 +163,43 @@ namespace vkh {
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 		std::vector<vk::DynamicState> dynamicStateEnable;
 		std::vector<vk::PushConstantRange> pushConstants;
-
-		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0);
 	};
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
+	void PipelineBuilder::setInitialViewPort(const vk::Viewport &viewport) {
+		this->viewport = viewport;
+	}
+	void PipelineBuilder::setInitialScissor(const vk::Rect2D &scissor) {
+		this->scissor = scissor;
+	}
+	void PipelineBuilder::setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput) {
+		this->vertexInput = vertexInput;
+	}
+	void PipelineBuilder::setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputAssembly) {
+		this->inputAssembly = inputAssembly;
+	}
+	void PipelineBuilder::setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization) {
+		this->rasterization = rasterization;
+	}
+	void PipelineBuilder::setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling) {
+		this->multisampling = multisampling;
+	}
+	void PipelineBuilder::setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil) {
+		this->depthStencil = depthStencil;
+	}
+	void PipelineBuilder::setColorBlendAttachment(const vk::PipelineColorBlendAttachmentState &colorBlendAttachment) {
+		this->colorBlendAttachment = colorBlendAttachment;
+	}
+	void PipelineBuilder::addShaderStages(const vk::PipelineShaderStageCreateInfo &shaderStage) {
+		this->shaderStages.push_back(shaderStage);
+	}
+	void PipelineBuilder::addDynamicState(const vk::DynamicState &dynamicstates) {
+		this->dynamicStateEnable.push_back(dynamicstates);
+	}
+	void PipelineBuilder::addPushConstants(const vk::PushConstantRange &pushconstant) {
+		this->pushConstants.push_back(pushconstant);
+	}
+
 	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode) {
 		return vk::PipelineRasterizationStateCreateInfo{
 			.polygonMode = polygonMode,
@@ -331,7 +378,7 @@ namespace vkh {
 			this->destroyer = std::move(other.destroyer);
 			this->resetter = std::move(other.resetter);
 			this->pool = std::move(other.pool);
-			this->zombies = std::move(other.zombies);
+			this->usedList = std::move(other.usedList);
 		}
 
 		Pool &operator=(Pool &&other) {
@@ -344,21 +391,18 @@ namespace vkh {
 			for (auto &el : pool) {
 				destroyer(el);
 			}
-			for (auto &list : zombies) {
-				for (auto &el : list) {
-					destroyer(el);
-				}
+			for (auto &el : usedList) {
+				destroyer(el);
 			}
 			pool.clear();
 		}
 
-		auto flush() {
-			for (auto &el : zombies[1]) {
+		void flush() {
+			for (auto &el : usedList) {
 				resetter(el);
 			}
-			pool.insert(pool.end(), zombies[1].begin(), zombies[1].end());
-			zombies[1].clear();
-			std::swap(zombies[0], zombies[1]);
+			pool.insert(pool.end(), usedList.begin(), usedList.end());
+			usedList.clear();
 		}
 
 		T get() {
@@ -368,7 +412,7 @@ namespace vkh {
 
 			auto el = pool.back();
 			pool.pop_back();
-			zombies[0].push_back(el);
+			usedList.push_back(el);
 			return el;
 		}
 
@@ -377,37 +421,13 @@ namespace vkh {
 		std::function<void(T)> destroyer;
 		std::function<void(T)> resetter;
 		std::vector<T> pool;
-		std::array<std::vector<T>, 2> zombies{std::vector<T>{}, std::vector<T>{}};
+		std::vector<T> usedList;
 	};
 
 	vk::UniqueCommandPool makeUniqueCommandPool(
 		vk::Device device,
 		uint32_t queueFamilyIndex,
 		vk::CommandPoolCreateFlagBits flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-
-	class CommandPool {
-	public:
-		CommandPool(
-			vk::Device device,
-			uint32_t queueFamilyIndex,
-			vk::CommandPoolCreateFlagBits flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-
-		CommandPool(CommandPool &&other) noexcept;
-
-		operator const vk::UniqueCommandPool &();
-
-		const vk::UniqueCommandPool &getPool();
-
-		vk::CommandBuffer getBuffer();
-
-		void flush();
-
-	private:
-		uint32_t queueFamilyIndex{0xFFFFFFFF};
-		vk::Device device;
-		vk::UniqueCommandPool pool{};
-		Pool<vk::CommandBuffer> bufferPool;
-	};
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
 	vk::UniqueCommandPool makeUniqueCommandPool(
@@ -419,44 +439,6 @@ namespace vkh {
 		cmdPoolCreateInfo.queueFamilyIndex = queueFamilyIndex;
 
 		return device.createCommandPoolUnique(cmdPoolCreateInfo);
-	}
-
-	CommandPool::CommandPool(
-		vk::Device device,
-		uint32_t queueFamilyIndex,
-		vk::CommandPoolCreateFlagBits flags)
-		: queueFamilyIndex{queueFamilyIndex},
-		  device{device},
-		  pool{makeUniqueCommandPool(device, queueFamilyIndex, flags)},
-		  bufferPool{
-			  [=]() { return device.allocateCommandBuffers(vk::CommandBufferAllocateInfo{.commandPool = *pool, .commandBufferCount = 1}).front(); },
-			  [=](vk::CommandBuffer buffer) { /* gets freed anyway */ },
-			  [=](vk::CommandBuffer buffer) { buffer.reset(); }} {}
-
-	CommandPool::CommandPool(CommandPool &&other) noexcept {
-		this->queueFamilyIndex = other.queueFamilyIndex;
-		this->device = std::move(other.device);
-		this->pool = std::move(other.pool);
-		this->bufferPool = std::move(other.bufferPool);
-		other.queueFamilyIndex = 0xFFFFFFFF;
-	}
-
-	CommandPool::operator const vk::UniqueCommandPool &() {
-		assert(pool); // USE AFTER MOVE
-		return pool;
-	}
-
-	const vk::UniqueCommandPool &CommandPool::getPool() {
-		assert(pool); // USE AFTER MOVE
-		return pool;
-	}
-
-	vk::CommandBuffer CommandPool::getBuffer() {
-		return bufferPool.get();
-	}
-
-	void CommandPool::flush() {
-		bufferPool.flush();
 	}
 #endif
 } // namespace vkh
