@@ -499,6 +499,7 @@ struct HelloTriangle {
 
 	void deinitSwapchain() {
 		if (vulkanInstance && logicalDevice) {
+            logicalDevice.waitIdle();
 			for (auto elem : commandBuffers)
 				if (elem)
 					logicalDevice.freeCommandBuffers(commandPool, elem);

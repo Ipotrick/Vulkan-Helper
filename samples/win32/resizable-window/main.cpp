@@ -24,9 +24,7 @@ public:
 	void onResize(int sizeX, int sizeY) {
 		helloTriangle.frameSizeX = sizeX;
 		helloTriangle.frameSizeY = sizeY;
-
-		helloTriangle.logicalDevice.waitIdle();
-
+        
 		helloTriangle.deinitSwapchain();
 
 		if (!helloTriangle.vulkanWindowSurface) {
