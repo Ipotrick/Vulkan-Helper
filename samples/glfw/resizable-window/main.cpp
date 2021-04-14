@@ -33,7 +33,7 @@ int main() try {
 			glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
 			helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
 
-		    auto queueIndices = findQueueFamilyIndices(helloTriangle.selectedPhysicalDevice, helloTriangle.vulkanWindowSurface);
+			auto queueIndices = findQueueFamilyIndices(helloTriangle.selectedPhysicalDevice, helloTriangle.vulkanWindowSurface);
 			if (!helloTriangle.selectedPhysicalDevice.getSurfaceSupportKHR(
 					static_cast<std::uint32_t>(queueIndices.presentation.value()),
 					helloTriangle.vulkanWindowSurface))
@@ -46,7 +46,7 @@ int main() try {
 		helloTriangle.draw();
 		glfwSwapBuffers(glfwWindowPtr);
 	});
-    
+
 	helloTriangle.initRenderContext();
 
 	while (true) {
