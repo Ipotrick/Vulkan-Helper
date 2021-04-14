@@ -187,9 +187,6 @@ namespace vkh {
 	void PipelineBuilder::setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil) {
 		this->depthStencil = depthStencil;
 	}
-	void PipelineBuilder::setColorBlendAttachment(const vk::PipelineColorBlendAttachmentState &colorBlendAttachment) {
-		this->colorBlendAttachment = colorBlendAttachment;
-	}
 	void PipelineBuilder::addShaderStages(const vk::PipelineShaderStageCreateInfo &shaderStage) {
 		this->shaderStages.push_back(shaderStage);
 	}

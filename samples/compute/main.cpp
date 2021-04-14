@@ -9,7 +9,7 @@ int main() {
 	std::size_t computeQueueIndex = 0;
 
 	auto selectedPhysicalDevice = vkh::selectPhysicalDevice(vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
-		std::size_t score = 0;
+		std::size_t score = 100;
 		return score;
 	});
 
