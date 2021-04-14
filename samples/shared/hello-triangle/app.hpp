@@ -20,9 +20,9 @@ struct QueueFamilyIndices {
 
 QueueFamilyIndices findQueueFamilyIndices(vk::PhysicalDevice device, vk::SurfaceKHR surface) {
 	QueueFamilyIndices resultIndices;
-	auto queue_family_properties = device.getQueueFamilyProperties();
-	for (std::size_t i = 0; i < queue_family_properties.size(); ++i) {
-		if (queue_family_properties[i].queueFlags & vk::QueueFlagBits::eGraphics)
+	auto queueFamilyProperties = device.getQueueFamilyProperties();
+	for (std::size_t i = 0; i < queueFamilyProperties.size(); ++i) {
+		if (queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)
 			resultIndices.graphics = i;
 		if (device.getSurfaceSupportKHR(static_cast<std::uint32_t>(i), surface))
 			resultIndices.presentation = i;
@@ -290,10 +290,35 @@ struct HelloTriangle {
 	vk::Instance vulkanInstance;
 	vk::DebugUtilsMessengerEXT debugMessenger;
 	vk::SurfaceKHR vulkanWindowSurface = nullptr;
+
 	vk::PhysicalDevice selectedPhysicalDevice;
 	vk::Device logicalDevice;
-	QueueFamilyIndices queueIndices;
 	vk::Queue graphicsQueue, presentQueue;
+
+	vk::Buffer vertexbuffer;
+	vk::DeviceMemory vertexbufferMemory;
+
+	vk::SwapchainKHR swapchain;
+	SwapchainDetails swapchainDetails;
+	std::vector<vk::Image> swapchainImages;
+	std::vector<vk::ImageView> swapchainImageViews;
+	std::vector<vk::Framebuffer> swapchainFramebuffers;
+
+	vk::RenderPass renderpass;
+	vk::PipelineLayout graphicsPipelineLayout;
+	vk::Pipeline graphicsPipeline;
+
+	vk::CommandPool commandPool;
+	std::vector<vk::CommandBuffer> commandBuffers;
+
+	std::vector<vk::Semaphore> imagesAcquired;
+	std::vector<vk::Semaphore> drawsFinished;
+	std::vector<vk::Fence> imagesInFlight;
+	std::vector<vk::Fence> inFlight;
+	std::size_t currentFrame = 0;
+	const std::size_t MAX_IMAGES_IN_FLIGHT = 2;
+	const std::size_t FENCE_TIMEOUT = UINT64_MAX;
+
 	struct TriangleVertex {
 		glm::vec2 pos;
 		glm::vec4 col;
@@ -305,25 +330,21 @@ struct HelloTriangle {
         {.pos = { 0.0f, -0.5f}, .col = {0, 0, 1, 1}}, // top middle   (blue)
 		// clang-format on
 	};
-	vk::Buffer vertexbuffer;
-	vk::DeviceMemory vertexbufferMemory;
-	vk::SwapchainKHR swapchain;
-	SwapchainDetails swapchainDetails;
-	std::vector<vk::Image> swapchainImages;
-	std::vector<vk::ImageView> swapchainImageViews;
-	vk::Pipeline graphicsPipeline;
-	vk::PipelineLayout graphicsPipelineLayout;
-	std::vector<vk::Framebuffer> framebuffers;
-	vk::RenderPass renderpass;
-	vk::CommandPool graphicsCommandPool;
-	vk::CommandBuffer graphicsCommandBuffer;
 
 	int frameSizeX, frameSizeY;
 
 	void initInstance() {
 		vulkanInstance = vkh::createInstance({}, {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, "VK_KHR_surface", "VK_KHR_win32_surface"});
-		// enable debug messenger for validation layers
 		debugMessenger = vkh::createDebugMessenger(vulkanInstance);
+	}
+
+	void initRenderContext() {
+		initDevice();
+		initVertexbuffer();
+		initSwapchain();
+		initPipeline();
+		initFramebuffers();
+		initSyncObjects();
 	}
 
 	void initDevice() {
@@ -358,7 +379,7 @@ struct HelloTriangle {
 		auto selectedPhysicalDeviceProperties = selectedPhysicalDevice.getProperties();
 		fmt::print("Selected Physical Device: {}\n", selectedPhysicalDeviceProperties.deviceName);
 
-		queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
+		auto queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
 		// logical device creation
 		logicalDevice = vkh::createLogicalDevice(selectedPhysicalDevice, queueIndices.uniqueIndices(), deviceExtensions);
 		// queue retrieval
@@ -384,15 +405,12 @@ struct HelloTriangle {
 	}
 
 	void initSwapchain() {
+		auto queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
 		auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
 		swapchain = std::get<0>(createSwapchainResult);
 		swapchainDetails = std::get<1>(createSwapchainResult);
 		swapchainImages = logicalDevice.getSwapchainImagesKHR(swapchain);
 		swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, logicalDevice);
-	}
-
-	void initFramebuffers() {
-		framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
 	}
 
 	void initPipeline() {
@@ -401,22 +419,63 @@ struct HelloTriangle {
 		graphicsPipeline = std::get<0>(createGraphicsPipelineResult);
 		graphicsPipelineLayout = std::get<1>(createGraphicsPipelineResult);
 
-		framebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
+		initFramebuffers();
 
-		graphicsCommandPool = logicalDevice.createCommandPool({
+		auto queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
+		commandPool = logicalDevice.createCommandPool({
 			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 			.queueFamilyIndex = static_cast<std::uint32_t>(queueIndices.graphics.value()),
 		});
-		graphicsCommandBuffer = logicalDevice.allocateCommandBuffers({.commandPool = graphicsCommandPool, .commandBufferCount = 1}).front();
+
+		commandBuffers = logicalDevice.allocateCommandBuffers({.commandPool = commandPool, .commandBufferCount = (std::uint32_t)swapchainFramebuffers.size()});
+	}
+
+	void initSyncObjects() {
+		imagesAcquired.resize(MAX_IMAGES_IN_FLIGHT);
+		drawsFinished.resize(MAX_IMAGES_IN_FLIGHT);
+		inFlight.resize(MAX_IMAGES_IN_FLIGHT);
+		imagesInFlight.resize(swapchainImages.size(), nullptr);
+
+		VkSemaphoreCreateInfo semaphoreInfo{};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		for (size_t i = 0; i < MAX_IMAGES_IN_FLIGHT; i++) {
+			imagesAcquired[i] = logicalDevice.createSemaphore({});
+			drawsFinished[i] = logicalDevice.createSemaphore({});
+			inFlight[i] = logicalDevice.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
+		}
+	}
+
+	void initFramebuffers() {
+		swapchainFramebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
 	}
 
 	void deinit() {
-		deinitSwapchain();
-
 		if (vulkanInstance) {
 			if (logicalDevice) {
-				if (graphicsCommandPool)
-					logicalDevice.destroyCommandPool(graphicsCommandPool);
+				logicalDevice.waitIdle();
+				deinitSwapchain();
+
+				for (auto elem : inFlight) {
+					if (elem) {
+						while (vk::Result::eTimeout == logicalDevice.waitForFences(elem, VK_TRUE, FENCE_TIMEOUT)) {
+						}
+						logicalDevice.destroyFence(elem);
+					}
+				}
+				for (auto elem : imagesAcquired)
+					if (elem)
+						logicalDevice.destroySemaphore(elem);
+				for (auto elem : drawsFinished)
+					if (elem)
+						logicalDevice.destroySemaphore(elem);
+
+				if (commandPool)
+					logicalDevice.destroyCommandPool(commandPool);
 
 				if (graphicsPipelineLayout)
 					logicalDevice.destroyPipelineLayout(graphicsPipelineLayout);
@@ -440,12 +499,13 @@ struct HelloTriangle {
 
 	void deinitSwapchain() {
 		if (vulkanInstance && logicalDevice) {
-			if (graphicsCommandBuffer)
-				logicalDevice.freeCommandBuffers(graphicsCommandPool, graphicsCommandBuffer);
-			for (const auto &framebuffer : framebuffers)
-				if (framebuffer)
-					logicalDevice.destroyFramebuffer(framebuffer);
-			framebuffers.clear();
+			for (auto elem : commandBuffers)
+				if (elem)
+					logicalDevice.freeCommandBuffers(commandPool, elem);
+			for (const auto &elem : swapchainFramebuffers)
+				if (elem)
+					logicalDevice.destroyFramebuffer(elem);
+			swapchainFramebuffers.clear();
 			for (auto &view : swapchainImageViews)
 				if (view)
 					logicalDevice.destroyImageView(view);
@@ -459,27 +519,36 @@ struct HelloTriangle {
 	}
 
 	void draw() {
+		while (vk::Result::eTimeout == logicalDevice.waitForFences(inFlight[currentFrame], VK_TRUE, FENCE_TIMEOUT)) {
+		}
 		// prepare frame for drawing
-		auto imageAcquiredSemaphore = logicalDevice.createSemaphore({});
-		auto currentFramebuffer = logicalDevice.acquireNextImageKHR(swapchain, 100000000 /* fence timeout */, imageAcquiredSemaphore, nullptr);
-		if (currentFramebuffer.result == vk::Result::eErrorOutOfDateKHR) {
+		auto imageIndex = logicalDevice.acquireNextImageKHR(swapchain, FENCE_TIMEOUT, imagesAcquired[currentFrame], nullptr);
+		if (imageIndex.result == vk::Result::eErrorOutOfDateKHR) {
 			throw std::runtime_error("Swapchain OUT OF DATE");
 		} else {
-			if (currentFramebuffer.result != vk::Result::eSuccess)
+			if (imageIndex.result != vk::Result::eSuccess)
 				throw std::runtime_error("failed to acquire next swapchain image");
-			if (currentFramebuffer.value >= framebuffers.size())
+			if (imageIndex.value >= swapchainFramebuffers.size())
 				throw std::runtime_error("grabbed an invalid framebuffer index");
 		}
 		// prepare frame clear values
 		std::array<vk::ClearValue, 2> clearValues;
-		clearValues[0].color = vk::ClearColorValue(std::array<float, 4>({{0.2f, 0.2f, 0.2f, 0.2f}}));
+		clearValues[0].color = vk::ClearColorValue(std::array<float, 4>({{0.2f, 0.2f, 0.2f, 1.0f}}));
 		clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+
+		if (imagesInFlight[imageIndex.value]) {
+			while (vk::Result::eTimeout == logicalDevice.waitForFences(imagesInFlight[imageIndex.value], VK_TRUE, FENCE_TIMEOUT)) {
+			}
+		}
+		imagesInFlight[imageIndex.value] = inFlight[currentFrame];
+
 		// set up command buffer
+		auto &graphicsCommandBuffer = commandBuffers[imageIndex.value];
 		graphicsCommandBuffer.begin(vk::CommandBufferBeginInfo{});
 		graphicsCommandBuffer.beginRenderPass(
 			{
 				.renderPass = renderpass,
-				.framebuffer = framebuffers[currentFramebuffer.value],
+				.framebuffer = swapchainFramebuffers[imageIndex.value],
 				.renderArea = vk::Rect2D(vk::Offset2D(0, 0), swapchainDetails.extent),
 				.clearValueCount = static_cast<std::uint32_t>(clearValues.size()),
 				.pClearValues = clearValues.data(),
@@ -496,22 +565,33 @@ struct HelloTriangle {
 		graphicsCommandBuffer.end();
 
 		// submit command buffer to graphics queue
-		auto drawFence = logicalDevice.createFence({});
-		graphicsQueue.submit({{.commandBufferCount = 1, .pCommandBuffers = &graphicsCommandBuffer}}, drawFence);
-		while (vk::Result::eTimeout == logicalDevice.waitForFences(drawFence, VK_TRUE, 100000000 /* fence timeout */)) {
-			// wait
-		}
+		vk::Semaphore waitSemaphores[] = {imagesAcquired[currentFrame]};
+		vk::Semaphore signalSemaphores[] = {drawsFinished[currentFrame]};
+		vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+		auto resetFenceResult = logicalDevice.resetFences(1, &inFlight[currentFrame]);
+		graphicsQueue.submit(
+			{{
+				.waitSemaphoreCount = 1,
+				.pWaitSemaphores = waitSemaphores,
+				.pWaitDstStageMask = waitStages,
+				.commandBufferCount = 1,
+				.pCommandBuffers = &commandBuffers[imageIndex.value],
+				.signalSemaphoreCount = 1,
+				.pSignalSemaphores = signalSemaphores,
+			}},
+			inFlight[currentFrame]);
 
 		auto presentResult = presentQueue.presentKHR({
+			.waitSemaphoreCount = 1,
+			.pWaitSemaphores = signalSemaphores,
 			.swapchainCount = 1,
 			.pSwapchains = &swapchain,
-			.pImageIndices = &currentFramebuffer.value,
+			.pImageIndices = &imageIndex.value,
 		});
 
 		if (presentResult != vk::Result::eSuccess)
 			throw std::runtime_error("Failed to execute present queue");
 
-		logicalDevice.destroyFence(drawFence);
-		logicalDevice.destroySemaphore(imageAcquiredSemaphore);
+		currentFrame = (currentFrame + 1) % MAX_IMAGES_IN_FLIGHT;
 	}
 };

@@ -35,8 +35,9 @@ int main() try {
 			glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
 			helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
 
+		    auto queueIndices = findQueueFamilyIndices(helloTriangle.selectedPhysicalDevice, helloTriangle.vulkanWindowSurface);
 			if (!helloTriangle.selectedPhysicalDevice.getSurfaceSupportKHR(
-					static_cast<std::uint32_t>(helloTriangle.queueIndices.presentation.value()),
+					static_cast<std::uint32_t>(queueIndices.presentation.value()),
 					helloTriangle.vulkanWindowSurface))
 				throw std::runtime_error("new surface does not support presentation on the previous queue index");
 		}
@@ -47,12 +48,8 @@ int main() try {
 		helloTriangle.draw();
 		glfwSwapBuffers(glfwWindowPtr);
 	});
-
-	helloTriangle.initDevice();
-	helloTriangle.initVertexbuffer();
-	helloTriangle.initSwapchain();
-	helloTriangle.initFramebuffers();
-	helloTriangle.initPipeline();
+    
+	helloTriangle.initRenderContext();
 
 	while (true) {
 		glfwPollEvents();
@@ -60,7 +57,6 @@ int main() try {
 			break;
 
 		helloTriangle.draw();
-		glfwSwapBuffers(glfwWindowPtr);
 	}
 
 	helloTriangle.deinit();

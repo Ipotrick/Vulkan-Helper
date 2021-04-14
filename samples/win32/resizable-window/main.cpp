@@ -7,14 +7,10 @@ class ResizableHelloTriangleApp : public Window {
 public:
 	ResizableHelloTriangleApp() : Window({.frameSizeX = 800, .frameSizeY = 600, .title = "Win32 Resizable Hello Triangle"}) {
 		helloTriangle.frameSizeX = 800;
-		helloTriangle.frameSizeX = 600;
+		helloTriangle.frameSizeY = 600;
 		helloTriangle.initInstance();
 		helloTriangle.vulkanWindowSurface = Window::createVulkanSurface(helloTriangle.vulkanInstance);
-		helloTriangle.initDevice();
-		helloTriangle.initVertexbuffer();
-		helloTriangle.initSwapchain();
-		helloTriangle.initFramebuffers();
-		helloTriangle.initPipeline();
+		helloTriangle.initRenderContext();
 	}
 
 	~ResizableHelloTriangleApp() {
@@ -35,8 +31,9 @@ public:
 
 		if (!helloTriangle.vulkanWindowSurface) {
 			helloTriangle.vulkanWindowSurface = Window::createVulkanSurface(helloTriangle.vulkanInstance);
+			auto queueIndices = findQueueFamilyIndices(helloTriangle.selectedPhysicalDevice, helloTriangle.vulkanWindowSurface);
 			if (!helloTriangle.selectedPhysicalDevice.getSurfaceSupportKHR(
-					static_cast<std::uint32_t>(helloTriangle.queueIndices.presentation.value()),
+					static_cast<std::uint32_t>(queueIndices.presentation.value()),
 					helloTriangle.vulkanWindowSurface))
 				throw std::runtime_error("new surface does not support presentation on the previous queue index");
 		}

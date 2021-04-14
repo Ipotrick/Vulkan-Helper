@@ -20,11 +20,7 @@ int main() try {
 	glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
 	helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
 
-	helloTriangle.initDevice();
-	helloTriangle.initVertexbuffer();
-	helloTriangle.initSwapchain();
-	helloTriangle.initFramebuffers();
-	helloTriangle.initPipeline();
+	helloTriangle.initRenderContext();
 
 	while (true) {
 		glfwPollEvents();
@@ -32,8 +28,6 @@ int main() try {
 			break;
 
 		helloTriangle.draw();
-
-		glfwSwapBuffers(glfwWindowPtr);
 	}
 
 	helloTriangle.deinit();

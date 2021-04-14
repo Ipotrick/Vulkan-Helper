@@ -6,15 +6,11 @@ int main() try {
 	HelloTriangle helloTriangle;
 
 	helloTriangle.frameSizeX = 800;
-	helloTriangle.frameSizeX = 600;
+	helloTriangle.frameSizeY = 600;
 	helloTriangle.initInstance();
-	Window window({.frameSizeX = helloTriangle.frameSizeX, .frameSizeY = helloTriangle.frameSizeX, .title = "Win32 Hello Triangle"});
+	Window window({.frameSizeX = helloTriangle.frameSizeX, .frameSizeY = helloTriangle.frameSizeY, .title = "Win32 Hello Triangle"});
 	helloTriangle.vulkanWindowSurface = window.createVulkanSurface(helloTriangle.vulkanInstance);
-	helloTriangle.initDevice();
-	helloTriangle.initVertexbuffer();
-	helloTriangle.initSwapchain();
-	helloTriangle.initFramebuffers();
-	helloTriangle.initPipeline();
+	helloTriangle.initRenderContext();
 
 	while (true) {
 		window.handleEvents();
