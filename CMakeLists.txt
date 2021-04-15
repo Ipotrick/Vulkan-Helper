@@ -39,7 +39,7 @@ install(
         ${CMAKE_INSTALL_DATADIR}/Vulkan-Helper)
 
 install(TARGETS Vulkan-Helper EXPORT Vulkan-Helper-targets)
-install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(EXPORT Vulkan-Helper-targets
 	NAMESPACE Vulkan-Helper::
 	DESTINATION ${CMAKE_INSTALL_DATADIR}/Vulkan-Helper)
