@@ -170,101 +170,24 @@ std::pair<vk::Pipeline, vk::PipelineLayout> createGraphicsPipeline(vk::Device lo
 	auto vert_spv = loadGlslShaderToSpv("samples/shared/hello-triangle/main.vert");
 	auto frag_spv = loadGlslShaderToSpv("samples/shared/hello-triangle/main.frag");
 	glslang::FinalizeProcess();
-	auto vert_shader_module = logical_device.createShaderModule({.codeSize = vert_spv.size() * sizeof(vert_spv[0]), .pCode = vert_spv.data()});
-	auto frag_shader_module = logical_device.createShaderModule({.codeSize = frag_spv.size() * sizeof(frag_spv[0]), .pCode = frag_spv.data()});
+	auto vert_shader_module = logical_device.createShaderModuleUnique({.codeSize = vert_spv.size() * sizeof(vert_spv[0]), .pCode = vert_spv.data()});
+	auto frag_shader_module = logical_device.createShaderModuleUnique({.codeSize = frag_spv.size() * sizeof(frag_spv[0]), .pCode = frag_spv.data()});
 
-	auto graphics_pipeline_layout = logical_device.createPipelineLayout({});
+	vkh::VertexDiscriptionBuilder vertBuilder;
+	auto vertDesc = vertBuilder
+		.beginBinding((std::uint32_t)vertexSize)
+		.addAttribute(vk::Format::eR32G32Sfloat)
+		.addAttribute(vk::Format::eR32G32B32A32Sfloat)
+		.build();
+	
 
-	std::array<vk::PipelineShaderStageCreateInfo, 2> pipeline_shaderstage_createinfos = {{
-		{.stage = vk::ShaderStageFlagBits::eVertex, .module = vert_shader_module, .pName = "main"},
-		{.stage = vk::ShaderStageFlagBits::eFragment, .module = frag_shader_module, .pName = "main"},
-	}};
-	vk::VertexInputBindingDescription vinput_binding_description(0, (std::uint32_t)vertexSize);
-	std::array<vk::VertexInputAttributeDescription, 2> vinput_attribute_descriptions{{
-		vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, 0),
-		vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32A32Sfloat, sizeof(glm::vec2)),
-	}};
-	vk::PipelineVertexInputStateCreateInfo pipeline_vinputstate_createinfo{
-		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &vinput_binding_description,
-		.vertexAttributeDescriptionCount = static_cast<std::uint32_t>(vinput_attribute_descriptions.size()),
-		.pVertexAttributeDescriptions = vinput_attribute_descriptions.data(),
-	};
-	vk::PipelineInputAssemblyStateCreateInfo pipeline_inputassemblystate_createinfo{.topology = vk::PrimitiveTopology::eTriangleList};
-	vk::PipelineViewportStateCreateInfo pipeline_viewportstate_createinfo{.viewportCount = 1, .scissorCount = 1};
-
-	vk::PipelineRasterizationStateCreateInfo pipeline_rasterizationstate_createinfo{
-		.depthClampEnable = false,
-		.rasterizerDiscardEnable = false,
-		.polygonMode = vk::PolygonMode::eFill,
-		.cullMode = vk::CullModeFlagBits::eBack,
-		.frontFace = vk::FrontFace::eClockwise,
-		.depthBiasEnable = false,
-		.depthBiasConstantFactor = 0.0f,
-		.depthBiasClamp = 0.0f,
-		.depthBiasSlopeFactor = 0.0f,
-		.lineWidth = 1.0f,
-	};
-	vk::PipelineMultisampleStateCreateInfo pipeline_multisamplestate_createinfo{.rasterizationSamples = vk::SampleCountFlagBits::e1};
-	vk::StencilOpState stencil_opstate(vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::CompareOp::eAlways);
-	vk::PipelineDepthStencilStateCreateInfo pipeline_depthstencilstate_createinfo{
-		.depthTestEnable = true,
-		.depthWriteEnable = true,
-		.depthCompareOp = vk::CompareOp::eLessOrEqual,
-		.depthBoundsTestEnable = false,
-		.stencilTestEnable = false,
-		.front = stencil_opstate,
-		.back = stencil_opstate,
-	};
-
-	vk::ColorComponentFlags colorcomponent_flags(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-												 vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
-	vk::PipelineColorBlendAttachmentState pipeline_colorblendattachment_state(
-		false,
-		vk::BlendFactor::eZero,
-		vk::BlendFactor::eZero,
-		vk::BlendOp::eAdd,
-		vk::BlendFactor::eZero,
-		vk::BlendFactor::eZero,
-		vk::BlendOp::eAdd,
-		colorcomponent_flags);
-	vk::PipelineColorBlendStateCreateInfo pipeline_colorblendstate_createinfo{
-		.logicOpEnable = false,
-		.logicOp = vk::LogicOp::eNoOp,
-		.attachmentCount = 1,
-		.pAttachments = &pipeline_colorblendattachment_state,
-		.blendConstants = {{1.0f, 1.0f, 1.0f, 1.0f}},
-	};
-
-	std::array<vk::DynamicState, 2> dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-	vk::PipelineDynamicStateCreateInfo pipeline_dynamicstate_createinfo{
-		.dynamicStateCount = static_cast<std::uint32_t>(dynamic_states.size()),
-		.pDynamicStates = dynamic_states.data(),
-	};
-
-	vk::GraphicsPipelineCreateInfo graphics_pipeline_createinfo{
-		.stageCount = static_cast<std::uint32_t>(pipeline_shaderstage_createinfos.size()),
-		.pStages = pipeline_shaderstage_createinfos.data(),
-		.pVertexInputState = &pipeline_vinputstate_createinfo,
-		.pInputAssemblyState = &pipeline_inputassemblystate_createinfo,
-		.pViewportState = &pipeline_viewportstate_createinfo,
-		.pRasterizationState = &pipeline_rasterizationstate_createinfo,
-		.pMultisampleState = &pipeline_multisamplestate_createinfo,
-		.pDepthStencilState = &pipeline_depthstencilstate_createinfo,
-		.pColorBlendState = &pipeline_colorblendstate_createinfo,
-		.pDynamicState = &pipeline_dynamicstate_createinfo,
-		.layout = graphics_pipeline_layout,
-		.renderPass = renderpass,
-	};
-
-	auto [graphics_pipeline_creation_result, result_graphics_pipeline] = logical_device.createGraphicsPipeline(nullptr, graphics_pipeline_createinfo);
-	if (graphics_pipeline_creation_result != vk::Result::eSuccess)
-		throw std::runtime_error("Failed to create graphics pipeline");
-
-	logical_device.destroyShaderModule(vert_shader_module);
-	logical_device.destroyShaderModule(frag_shader_module);
-
-	return std::make_pair(result_graphics_pipeline, graphics_pipeline_layout);
+	vkh::GraphicsPipelineBuilder pipelineBuilder;
+	pipelineBuilder
+		.setVertexInput(vertDesc.makePipelineVertexInputStateCreateInfo())
+		.addShaderStage({.stage = vk::ShaderStageFlagBits::eVertex, .module = *vert_shader_module, .pName = "main"})
+		.addShaderStage({.stage = vk::ShaderStageFlagBits::eFragment, .module = *frag_shader_module, .pName = "main"});
+	vkh::Pipeline pipe = pipelineBuilder.build(logical_device, renderpass);
+	return std::make_pair(pipe.pipeline.release(), pipe.layout.release());
 }
 
 std::vector<vk::Framebuffer> createFramebuffers(vk::Device logicalDevice, const std::vector<vk::ImageView> &swapchainImageViews, vk::RenderPass renderpass, int sizeX, int sizeY) {
