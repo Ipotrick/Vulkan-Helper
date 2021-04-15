@@ -175,11 +175,10 @@ std::pair<vk::Pipeline, vk::PipelineLayout> createGraphicsPipeline(vk::Device lo
 
 	vkh::VertexDiscriptionBuilder vertBuilder;
 	auto vertDesc = vertBuilder
-		.beginBinding((std::uint32_t)vertexSize)
-		.addAttribute(vk::Format::eR32G32Sfloat)
-		.addAttribute(vk::Format::eR32G32B32A32Sfloat)
-		.build();
-	
+						.beginBinding((std::uint32_t)vertexSize)
+						.addAttribute(vk::Format::eR32G32Sfloat)
+						.addAttribute(vk::Format::eR32G32B32A32Sfloat)
+						.build();
 
 	vkh::GraphicsPipelineBuilder pipelineBuilder;
 	pipelineBuilder
@@ -416,7 +415,7 @@ struct HelloTriangle {
 
 	void deinitSwapchain() {
 		if (vulkanInstance && logicalDevice) {
-            logicalDevice->waitIdle();
+			logicalDevice->waitIdle();
 			for (auto elem : commandBuffers)
 				if (elem)
 					logicalDevice->freeCommandBuffers(commandPool, elem);

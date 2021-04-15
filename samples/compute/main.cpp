@@ -33,10 +33,10 @@ int main() try {
 	auto logicalDevice = vkh::createLogicalDevice(selectedPhysicalDevice, {computeQueueFamilyIndex}, deviceExtensions);
 	auto computeQueue = logicalDevice->getQueue(computeQueueFamilyIndex, 0);
 
-    glm::ivec2 dim{512, 512};
+	glm::ivec2 dim{512, 512};
 	std::vector<std::uint32_t> localBuffer;
 	localBuffer.resize(dim.x * dim.y);
-    std::uint32_t localBufferByteCount = static_cast<std::uint32_t>(localBuffer.size() * sizeof(localBuffer[0]));
+	std::uint32_t localBufferByteCount = static_cast<std::uint32_t>(localBuffer.size() * sizeof(localBuffer[0]));
 
 	auto deviceBuffer = logicalDevice->createBuffer({.size = localBufferByteCount, .usage = vk::BufferUsageFlagBits::eStorageBuffer});
 	auto deviceBufferMemoryRequirements = logicalDevice->getBufferMemoryRequirements(deviceBuffer);
@@ -96,66 +96,66 @@ int main() try {
 		},
 		nullptr);
 
-    
-    auto commandPool = logicalDevice->createCommandPoolUnique({.queueFamilyIndex = computeQueueFamilyIndex});
-    auto commandBuffer = logicalDevice->allocateCommandBuffers({.commandPool = *commandPool, .commandBufferCount = 1}).front();
+	auto commandPool = logicalDevice->createCommandPoolUnique({.queueFamilyIndex = computeQueueFamilyIndex});
+	auto commandBuffer = logicalDevice->allocateCommandBuffers({.commandPool = *commandPool, .commandBufferCount = 1}).front();
 
-    commandBuffer.begin(vk::CommandBufferBeginInfo{});
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, computePipelineLayout, 0, descriptorSets[0], nullptr);
-    commandBuffer.dispatch(dim.x, dim.y, 1);
-    commandBuffer.end();
-    
-    double duration = 0.0;
+	commandBuffer.begin(vk::CommandBufferBeginInfo{});
+	commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
+	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, computePipelineLayout, 0, descriptorSets[0], nullptr);
+	commandBuffer.dispatch(dim.x, dim.y, 1);
+	commandBuffer.end();
 
-    for (int i = 0; i < 10; ++i) {
-        fmt::print("starting compute shader... ");
-        auto t0 = std::chrono::high_resolution_clock::now();
-        computeQueue.submit({{
-            .commandBufferCount = 1,
-            .pCommandBuffers = &commandBuffer,
-        }});
-        computeQueue.waitIdle();
-        auto t1 = std::chrono::high_resolution_clock::now();
-        double thisDur = std::chrono::duration<double>(t1 - t0).count();
-        duration += thisDur;
-        fmt::print("Finished! took {}s\n", thisDur);
-    }
-    duration /= 10;
-    fmt::print("Average duration {}s ({} fps)\n", duration, 1.0 / duration);
+	double duration = 0.0;
 
-    logicalDevice->freeCommandBuffers(*commandPool, commandBuffer);
+	for (int i = 0; i < 10; ++i) {
+		fmt::print("starting compute shader... ");
+		auto t0 = std::chrono::high_resolution_clock::now();
+		computeQueue.submit({{
+			.commandBufferCount = 1,
+			.pCommandBuffers = &commandBuffer,
+		}});
+		computeQueue.waitIdle();
+		auto t1 = std::chrono::high_resolution_clock::now();
+		double thisDur = std::chrono::duration<double>(t1 - t0).count();
+		duration += thisDur;
+		fmt::print("Finished! took {}s\n", thisDur);
+	}
+	duration /= 10;
+	fmt::print("Average duration {}s ({} fps)\n", duration, 1.0 / duration);
+
+	logicalDevice->freeCommandBuffers(*commandPool, commandBuffer);
 
 	auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice->mapMemory(deviceBufferMemory, 0, deviceBufferMemoryRequirements.size));
 	std::memcpy(localBuffer.data(), vertexbufferDeviceDataPtr, localBufferByteCount);
 	logicalDevice->unmapMemory(deviceBufferMemory);
 
-    auto savePPM = [](const std::filesystem::path &filepath, const std::vector<std::uint32_t> buffer, glm::ivec2 dim) {
-        std::ofstream output_file(filepath, std::ios::binary);
-        if (output_file.is_open()) {
-            output_file << "P6\n" << dim.x << " " << dim.y << "\n255\n";
-            for (const auto &p : buffer) {
-                std::uint8_t r = (p >> 0x18) & 0xff;
-                std::uint8_t g = (p >> 0x10) & 0xff;
-                std::uint8_t b = (p >> 0x08) & 0xff;
-                output_file << r << g << b;
-            }
-        }
-    };
+	auto savePPM = [](const std::filesystem::path &filepath, const std::vector<std::uint32_t> buffer, glm::ivec2 dim) {
+		std::ofstream output_file(filepath, std::ios::binary);
+		if (output_file.is_open()) {
+			output_file << "P6\n"
+						<< dim.x << " " << dim.y << "\n255\n";
+			for (const auto &p : buffer) {
+				std::uint8_t r = (p >> 0x18) & 0xff;
+				std::uint8_t g = (p >> 0x10) & 0xff;
+				std::uint8_t b = (p >> 0x08) & 0xff;
+				output_file << r << g << b;
+			}
+		}
+	};
 
-    fmt::print("Saving image... ");
-    savePPM("build/compute.ppm", localBuffer, dim);
-    fmt::print("Finished\n");
+	fmt::print("Saving image... ");
+	savePPM("build/compute.ppm", localBuffer, dim);
+	fmt::print("Finished\n");
 
-    std::cin.get();
+	std::cin.get();
 
 } catch (const vk::SystemError &e) {
 	fmt::print("vk::SystemError: {}", e.what());
-    std::cin.get();
+	std::cin.get();
 } catch (const std::exception &e) {
 	fmt::print("std::exception: {}", e.what());
-    std::cin.get();
+	std::cin.get();
 } catch (...) {
 	fmt::print("Unknown exception: no details available");
-    std::cin.get();
+	std::cin.get();
 }

@@ -171,7 +171,7 @@ static std::vector<std::uint32_t> loadGlslShaderToSpv(const std::filesystem::pat
 		shaderStage = vk::ShaderStageFlagBits::eVertex;
 	} else if (filepath.extension() == ".frag") {
 		shaderStage = vk::ShaderStageFlagBits::eFragment;
-    } else if (filepath.extension() == ".comp") {
+	} else if (filepath.extension() == ".comp") {
 		shaderStage = vk::ShaderStageFlagBits::eCompute;
 	} else {
 		throw std::runtime_error(fmt::format("Attempting to load a currently unsupported shader file stage '{}'", filepath.extension().string()).c_str());

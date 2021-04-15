@@ -1,6 +1,6 @@
 {
     "name": "Vulkan-Helper",
-    "version": "1.0.0",
+    "version": "0.1.1",
     "description": "A helper library for the Vulkan SDK in order to write more concise code",
     "homepage": "https://github.com/Ipotrick/Vulkan-Helper"
 }

@@ -139,18 +139,18 @@ namespace vkh {
 	public:
 		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0, vk::PipelineCache pipelineCache = nullptr);
 
-		GraphicsPipelineBuilder& setViewport(const vk::Viewport &viewport);
-		GraphicsPipelineBuilder& setScissor(const vk::Rect2D &scissor);
-		GraphicsPipelineBuilder& setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput);
-		GraphicsPipelineBuilder& setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputassembly);
-		GraphicsPipelineBuilder& setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization);
-		GraphicsPipelineBuilder& setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling);
-		GraphicsPipelineBuilder& setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil);
-		GraphicsPipelineBuilder& setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend);
-		GraphicsPipelineBuilder& addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend);
-		GraphicsPipelineBuilder& addShaderStage(const vk::PipelineShaderStageCreateInfo &shaderStage);
-		GraphicsPipelineBuilder& addDynamicState(const vk::DynamicState &dynamicstates);
-		GraphicsPipelineBuilder& addPushConstants(const vk::PushConstantRange &pushconstants);
+		GraphicsPipelineBuilder &setViewport(const vk::Viewport &viewport);
+		GraphicsPipelineBuilder &setScissor(const vk::Rect2D &scissor);
+		GraphicsPipelineBuilder &setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput);
+		GraphicsPipelineBuilder &setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputassembly);
+		GraphicsPipelineBuilder &setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization);
+		GraphicsPipelineBuilder &setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling);
+		GraphicsPipelineBuilder &setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil);
+		GraphicsPipelineBuilder &setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend);
+		GraphicsPipelineBuilder &addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend);
+		GraphicsPipelineBuilder &addShaderStage(const vk::PipelineShaderStageCreateInfo &shaderStage);
+		GraphicsPipelineBuilder &addDynamicState(const vk::DynamicState &dynamicstates);
+		GraphicsPipelineBuilder &addPushConstants(const vk::PushConstantRange &pushconstants);
 
 	private:
 		std::optional<vk::Viewport> viewport;
@@ -275,19 +275,17 @@ namespace vkh {
 		vk::PipelineColorBlendStateCreateInfo colorBlendingSCI;
 		if (this->colorBlend.has_value()) {
 			colorBlendingSCI = this->colorBlend.value();
-		} 
-		else if (this->colorAttachmentBlends.size() > 0) {
+		} else if (this->colorAttachmentBlends.size() > 0) {
 			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
 				.logicOpEnable = VK_FALSE,
 				.logicOp = vk::LogicOp::eCopy,
 				.attachmentCount = static_cast<uint32_t>(this->colorAttachmentBlends.size()),
 				.pAttachments = this->colorAttachmentBlends.data(),
 			};
-		} 
-		else {
+		} else {
 			vk::PipelineColorBlendAttachmentState colorBlendAttachmentStateCI = makeDefaultColorBlendSAttachmentState();
-			
-			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo {
+
+			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
 				.logicOpEnable = VK_FALSE,
 				.logicOp = vk::LogicOp::eCopy,
 				.attachmentCount = 1,
@@ -477,7 +475,7 @@ namespace vkh {
 
 	vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability);
 
-    vk::UniqueDevice createLogicalDevice(vk::PhysicalDevice physicalDevice, const std::set<std::size_t> &queueIndices, const std::vector<const char *> &extensions);
+	vk::UniqueDevice createLogicalDevice(vk::PhysicalDevice physicalDevice, const std::set<std::size_t> &queueIndices, const std::vector<const char *> &extensions);
 
 	std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask);
 
@@ -514,31 +512,31 @@ namespace vkh {
 					// UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
 					return VK_FALSE;
 				}
-				std::string message = 
-					vk::to_string(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity)) + ": " + 
-					vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(messageTypes)) + ":\n\ttmessage name   = <" + 
+				std::string message =
+					vk::to_string(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity)) + ": " +
+					vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(messageTypes)) + ":\n\ttmessage name   = <" +
 					pCallbackData->pMessageIdName + ">\n\tmessage number = " +
-					pCallbackData->messageIdNumber + "\n\tmessage        = <"
-					pCallbackData->pMessage) + ">\n";
+					std::to_string(pCallbackData->messageIdNumber) + "\n\tmessage        = <" +
+					pCallbackData->pMessage + ">\n";
 				if (0 < pCallbackData->queueLabelCount) {
 					message += "\tQueue Labels:\n";
 					for (uint8_t i = 0; i < pCallbackData->queueLabelCount; i++)
-						message += "\t\tlabelName = <" + pCallbackData->pQueueLabels[i].pLabelName + ">\n";
+						message += std::string("\t\tlabelName = <") + pCallbackData->pQueueLabels[i].pLabelName + ">\n";
 				}
 				if (0 < pCallbackData->cmdBufLabelCount) {
 					message += "\tCommandBuffer Labels:\n";
 					for (uint8_t i = 0; i < pCallbackData->cmdBufLabelCount; i++)
-						message += "\t\tlabelName = <" + pCallbackData->pCmdBufLabels[i].pLabelName + ">\n";
+						message += std::string("\t\tlabelName = <") + pCallbackData->pCmdBufLabels[i].pLabelName + ">\n";
 				}
 				if (0 < pCallbackData->objectCount) {
 					message += "\tObjects:\n";
 					for (uint8_t i = 0; i < pCallbackData->cmdBufLabelCount; i++) {
-						message += "\t\tlabelName = <" + 
-											   pCallbackData->pCmdBufLabels[i].pLabelName + ">\nObject " + i + "\n\t\t\tobjectType   = " + 
-											   vk::to_string(static_cast<vk::ObjectType>(pCallbackData->pObjects[i].objectType)) + "\n\t\t\tobjectHandle = " +
-											   pCallbackData->pObjects[i].objectHandle) + "\n";
+						message += std::string("\t\tlabelName = <") +
+								   pCallbackData->pCmdBufLabels[i].pLabelName + ">\nObject " + std::to_string(i) + "\n\t\t\tobjectType   = " +
+								   vk::to_string(static_cast<vk::ObjectType>(pCallbackData->pObjects[i].objectType)) + "\n\t\t\tobjectHandle = " +
+								   std::to_string(pCallbackData->pObjects[i].objectHandle) + "\n";
 						if (pCallbackData->pObjects[i].pObjectName)
-							message += "\t\t\tobjectName   = <" + pCallbackData->pObjects[i].pObjectName + ">\n";
+							message += std::string("\t\t\tobjectName   = <") + pCallbackData->pObjects[i].pObjectName + ">\n";
 					}
 				}
 				MessageBox(nullptr, message.c_str(), "Vulkan Validation Error", MB_OK);
