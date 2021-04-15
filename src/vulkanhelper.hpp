@@ -135,21 +135,22 @@ namespace vkh {
 		vk::UniquePipelineLayout layout;
 	};
 
-	class PipelineBuilder {
+	class GraphicsPipelineBuilder {
 	public:
-		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0);
+		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0, vk::PipelineCache pipelineCache = nullptr);
 
-		void setInitialViewPort(const vk::Viewport &viewport);
-		void setInitialScissor(const vk::Rect2D &scissor);
-		void setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput);
-		void setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputassembly);
-		void setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization);
-		void setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling);
-		void setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil);
-		//void setColorBlendAttachment(const vk::PipelineColorBlendAttachmentState &colorBlendAttachment);		dont understand color lbending in vulkan
-		void addShaderStages(const vk::PipelineShaderStageCreateInfo &shaderStage);
-		void addDynamicState(const vk::DynamicState &dynamicstates);
-		void addPushConstants(const vk::PushConstantRange &pushconstants);
+		GraphicsPipelineBuilder& setViewport(const vk::Viewport &viewport);
+		GraphicsPipelineBuilder& setScissor(const vk::Rect2D &scissor);
+		GraphicsPipelineBuilder& setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput);
+		GraphicsPipelineBuilder& setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputassembly);
+		GraphicsPipelineBuilder& setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization);
+		GraphicsPipelineBuilder& setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling);
+		GraphicsPipelineBuilder& setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil);
+		GraphicsPipelineBuilder& setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend);
+		GraphicsPipelineBuilder& addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend);
+		GraphicsPipelineBuilder& addShaderStage(const vk::PipelineShaderStageCreateInfo &shaderStage);
+		GraphicsPipelineBuilder& addDynamicState(const vk::DynamicState &dynamicstates);
+		GraphicsPipelineBuilder& addPushConstants(const vk::PushConstantRange &pushconstants);
 
 	private:
 		std::optional<vk::Viewport> viewport;
@@ -159,47 +160,67 @@ namespace vkh {
 		std::optional<vk::PipelineRasterizationStateCreateInfo> rasterization;
 		std::optional<vk::PipelineMultisampleStateCreateInfo> multisampling;
 		std::optional<vk::PipelineDepthStencilStateCreateInfo> depthStencil;
-		std::optional<vk::PipelineColorBlendAttachmentState> colorBlendAttachment;
+		std::optional<vk::PipelineColorBlendStateCreateInfo> colorBlend;
+		std::vector<vk::PipelineColorBlendAttachmentState> colorAttachmentBlends;
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 		std::vector<vk::DynamicState> dynamicStateEnable;
 		std::vector<vk::PushConstantRange> pushConstants;
 	};
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
-	void PipelineBuilder::setInitialViewPort(const vk::Viewport &viewport) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setViewport(const vk::Viewport &viewport) {
 		this->viewport = viewport;
+		return *this;
 	}
-	void PipelineBuilder::setInitialScissor(const vk::Rect2D &scissor) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setScissor(const vk::Rect2D &scissor) {
 		this->scissor = scissor;
+		return *this;
 	}
-	void PipelineBuilder::setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput) {
 		this->vertexInput = vertexInput;
+		return *this;
 	}
-	void PipelineBuilder::setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputAssembly) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputAssembly) {
 		this->inputAssembly = inputAssembly;
+		return *this;
 	}
-	void PipelineBuilder::setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization) {
 		this->rasterization = rasterization;
+		return *this;
 	}
-	void PipelineBuilder::setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling) {
 		this->multisampling = multisampling;
+		return *this;
 	}
-	void PipelineBuilder::setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil) {
 		this->depthStencil = depthStencil;
+		return *this;
 	}
-	void PipelineBuilder::addShaderStages(const vk::PipelineShaderStageCreateInfo &shaderStage) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend) {
+		this->colorBlend = colorBlend;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend) {
+		this->colorAttachmentBlends.push_back(colorAttachmentBlend);
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addShaderStage(const vk::PipelineShaderStageCreateInfo &shaderStage) {
 		this->shaderStages.push_back(shaderStage);
+		return *this;
 	}
-	void PipelineBuilder::addDynamicState(const vk::DynamicState &dynamicstates) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addDynamicState(const vk::DynamicState &dynamicstates) {
 		this->dynamicStateEnable.push_back(dynamicstates);
+		return *this;
 	}
-	void PipelineBuilder::addPushConstants(const vk::PushConstantRange &pushconstant) {
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addPushConstants(const vk::PushConstantRange &pushconstant) {
 		this->pushConstants.push_back(pushconstant);
+		return *this;
 	}
 
 	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode) {
 		return vk::PipelineRasterizationStateCreateInfo{
 			.polygonMode = polygonMode,
+			.cullMode = vk::CullModeFlagBits::eNone,
 			.frontFace = vk::FrontFace::eClockwise,
 			.lineWidth = 1.0f,
 		};
@@ -211,6 +232,7 @@ namespace vkh {
 
 	vk::PipelineColorBlendAttachmentState makeDefaultColorBlendSAttachmentState() {
 		return vk::PipelineColorBlendAttachmentState{
+			.blendEnable = VK_FALSE,
 			.colorWriteMask =
 				vk::ColorComponentFlagBits::eR |
 				vk::ColorComponentFlagBits::eG |
@@ -219,7 +241,7 @@ namespace vkh {
 		};
 	}
 
-	Pipeline PipelineBuilder::build(vk::Device device, vk::RenderPass pass, uint32_t subpass) {
+	Pipeline GraphicsPipelineBuilder::build(vk::Device device, vk::RenderPass pass, uint32_t subpass, vk::PipelineCache pipelineCache) {
 		if (!vertexInput) {
 			std::cout << "error: vertexInput was not specified in pipeline builder!\n";
 			exit(-1);
@@ -227,7 +249,6 @@ namespace vkh {
 
 		// set state create infos:
 		vk::PipelineVertexInputStateCreateInfo pvertexInputCI = vertexInput.value();
-		vk::PipelineColorBlendAttachmentState pcolorBlendAttachmentCI = colorBlendAttachment.value_or(vkh::makeDefaultColorBlendSAttachmentState());
 		vk::PipelineInputAssemblyStateCreateInfo pinputAssemlyStateCI = inputAssembly.value_or(vk::PipelineInputAssemblyStateCreateInfo{.topology = vk::PrimitiveTopology::eTriangleList});
 		vk::PipelineRasterizationStateCreateInfo prasterizationStateCI = rasterization.value_or(vkh::makeDefaultRasterisationStateCreateInfo(vk::PolygonMode::eFill));
 		vk::PipelineMultisampleStateCreateInfo multisamplerStateCI = multisampling.value_or(vkh::makeDefaultMultisampleStateCreateInfo());
@@ -251,14 +272,28 @@ namespace vkh {
 			.pScissors = &pscissor,
 		};
 
-		//setup dummy color blending. We aren't using transparent objects yet
-		//the blending is just "no blend", but we do write to the color attachment
-		vk::PipelineColorBlendStateCreateInfo colorBlendingSCI{
-			.logicOpEnable = VK_FALSE,
-			.logicOp = vk::LogicOp::eCopy,
-			.attachmentCount = 1,
-			.pAttachments = &pcolorBlendAttachmentCI,
-		};
+		vk::PipelineColorBlendStateCreateInfo colorBlendingSCI;
+		if (this->colorBlend.has_value()) {
+			colorBlendingSCI = this->colorBlend.value();
+		} 
+		else if (this->colorAttachmentBlends.size() > 0) {
+			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
+				.logicOpEnable = VK_FALSE,
+				.logicOp = vk::LogicOp::eCopy,
+				.attachmentCount = static_cast<uint32_t>(this->colorAttachmentBlends.size()),
+				.pAttachments = this->colorAttachmentBlends.data(),
+			};
+		} 
+		else {
+			vk::PipelineColorBlendAttachmentState colorBlendAttachmentStateCI = makeDefaultColorBlendSAttachmentState();
+			
+			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo {
+				.logicOpEnable = VK_FALSE,
+				.logicOp = vk::LogicOp::eCopy,
+				.attachmentCount = 1,
+				.pAttachments = &colorBlendAttachmentStateCI,
+			};
+		}
 
 		// dynamic state setup:
 		if (std::find(dynamicStateEnable.begin(), dynamicStateEnable.end(), vk::DynamicState::eViewport) == dynamicStateEnable.end()) {
@@ -290,10 +325,9 @@ namespace vkh {
 			.subpass = subpass,
 		};
 
-		auto ret = device.createGraphicsPipelineUnique({}, pipelineCI);
+		auto ret = device.createGraphicsPipelineUnique(pipelineCache, pipelineCI);
 		if (ret.result != vk::Result::eSuccess) {
-			std::cerr << "error: could not compile pipeline!\n";
-			exit(-1);
+			throw std::runtime_error("error: Failed to create graphics pipeline!");
 		}
 		pipeline.pipeline = std::move(ret.value);
 
@@ -420,24 +454,6 @@ namespace vkh {
 		std::vector<T> pool;
 		std::vector<T> usedList;
 	};
-
-	vk::UniqueCommandPool makeUniqueCommandPool(
-		vk::Device device,
-		uint32_t queueFamilyIndex,
-		vk::CommandPoolCreateFlagBits flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-
-#if defined(VULKANHELPER_IMPLEMENTATION)
-	vk::UniqueCommandPool makeUniqueCommandPool(
-		vk::Device device,
-		uint32_t queueFamilyIndex,
-		vk::CommandPoolCreateFlagBits flags) {
-		vk::CommandPoolCreateInfo cmdPoolCreateInfo = {};
-		cmdPoolCreateInfo.flags = flags; // we can reset individual command buffers from this pool
-		cmdPoolCreateInfo.queueFamilyIndex = queueFamilyIndex;
-
-		return device.createCommandPoolUnique(cmdPoolCreateInfo);
-	}
-#endif
 } // namespace vkh
 
 namespace vkh_detail {

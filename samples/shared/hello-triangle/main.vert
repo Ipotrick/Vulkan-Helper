@@ -9,5 +9,5 @@ layout (location = 0) out vec4 outColor;
 
 void main() {
 	outColor = inColor;
-	gl_Position = vec4(inPosition, 0, 1);
+	gl_Position = vec4(inPosition, 0.5, 1);
 }
