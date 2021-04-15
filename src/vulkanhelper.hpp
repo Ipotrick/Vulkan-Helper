@@ -455,18 +455,20 @@ VKAPI_ATTR void VKAPI_CALL vkDestroyDebugUtilsMessengerEXT(VkInstance instance, 
 #endif
 
 namespace vkh {
-	vk::Instance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions);
+	vk::UniqueInstance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions);
 
-	vk::DebugUtilsMessengerEXT createDebugMessenger(vk::Instance instance);
+	vk::UniqueDebugUtilsMessengerEXT createDebugMessenger(const vk::UniqueInstance &instance);
 
-	vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability);
+	vk::PhysicalDevice selectPhysicalDevice(const vk::UniqueInstance &instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability);
+
+    vk::UniqueDevice createLogicalDevice(vk::PhysicalDevice physicalDevice, const std::set<std::size_t> &queueIndices, const std::vector<const char *> &extensions);
 
 	std::uint32_t findMemoryTypeIndex(vk::PhysicalDeviceMemoryProperties const &memoryProperties, uint32_t typeBits, vk::MemoryPropertyFlags requirementsMask);
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
-	vk::Instance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions) {
+	vk::UniqueInstance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions) {
 		vk::ApplicationInfo vulkanApplicationInfo{.apiVersion = VK_API_VERSION_1_1};
-		return vk::createInstance({
+		return vk::createInstanceUnique({
 			.pApplicationInfo = &vulkanApplicationInfo,
 			.enabledLayerCount = static_cast<uint32_t>(layers.size()),
 			.ppEnabledLayerNames = layers.data(),
@@ -475,7 +477,7 @@ namespace vkh {
 		});
 	}
 
-	vk::DebugUtilsMessengerEXT createDebugMessenger(vk::Instance instance) {
+	vk::UniqueDebugUtilsMessengerEXT createDebugMessenger(const vk::UniqueInstance &instance) {
 		vkh_detail::pfnVkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
 		if (!vkh_detail::pfnVkCreateDebugUtilsMessengerEXT)
 			throw std::runtime_error("GetInstanceProcAddr: Unable to find pfnVkCreateDebugUtilsMessengerEXT function.");
@@ -483,7 +485,7 @@ namespace vkh {
 		if (!vkh_detail::pfnVkDestroyDebugUtilsMessengerEXT)
 			throw std::runtime_error("GetInstanceProcAddr: Unable to find pfnVkDestroyDebugUtilsMessengerEXT function.");
 
-		return instance.createDebugUtilsMessengerEXT(vk::DebugUtilsMessengerCreateInfoEXT{
+		return instance->createDebugUtilsMessengerEXTUnique(vk::DebugUtilsMessengerCreateInfoEXT{
 			.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
 			.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
 			.pfnUserCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -542,7 +544,7 @@ namespace vkh {
 		return devices[std::distance(devicesSuitability.begin(), bestDeviceIter)];
 	}
 
-	auto createLogicalDevice(vk::PhysicalDevice physicalDevice, const std::set<std::size_t> &queueIndices, const std::vector<const char *> &extensions) {
+	vk::UniqueDevice createLogicalDevice(vk::PhysicalDevice physicalDevice, const std::set<std::size_t> &queueIndices, const std::vector<const char *> &extensions) {
 		float queuePriority = 0.0f;
 		std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateinfos;
 		for (auto index : queueIndices) {

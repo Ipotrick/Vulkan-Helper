@@ -1,14 +1,14 @@
+#version 430
 
-layout(set = 0, binding = 0, std430) buffer Positions {
-    vec2 pos[];
-} positions;
-
-layout(set = 0, binding = 1, std430) readonly buffer Velocities {
-    vec2 vel[];
-} velocities;
+layout(set = 0, binding = 0) buffer OutputBuffer {
+    uint col[];
+} outputBuffer;
 
 void main() {
-    vec2 current_pos = positions.pos[gl_GlobalInvocationID.x];
-    vec2 velocity = velocities.vel[gl_GlobalInvocationID.x];
-    positions.pos[gl_GlobalInvocationID.x] = current_pos;
+    uint col = 0x000000ff;
+
+    col |= (gl_GlobalInvocationID.x / 2 & 0xff) << 0x18;
+    col |= (gl_GlobalInvocationID.y / 2 & 0xff) << 0x10;
+
+    outputBuffer.col[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * 512] = col;
 }

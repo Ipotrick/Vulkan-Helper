@@ -377,7 +377,6 @@ struct HelloTriangle {
 		});
 
 		auto selectedPhysicalDeviceProperties = selectedPhysicalDevice.getProperties();
-		fmt::print("Selected Physical Device: {}\n", selectedPhysicalDeviceProperties.deviceName);
 
 		auto queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
 		// logical device creation
