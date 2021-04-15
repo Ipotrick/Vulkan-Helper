@@ -3,6 +3,8 @@
 
 #include "../shared/load-shader.hpp"
 
+#include <glm/glm.hpp>
+
 int main() try {
 
 	auto vulkanInstance = vkh::createInstance({}, {VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
@@ -31,8 +33,9 @@ int main() try {
 	auto logicalDevice = vkh::createLogicalDevice(selectedPhysicalDevice, {computeQueueFamilyIndex}, deviceExtensions);
 	auto computeQueue = logicalDevice->getQueue(computeQueueFamilyIndex, 0);
 
+    glm::ivec2 dim{512, 512};
 	std::vector<std::uint32_t> localBuffer;
-	localBuffer.resize(512 * 512);
+	localBuffer.resize(dim.x * dim.y);
     std::uint32_t localBufferByteCount = static_cast<std::uint32_t>(localBuffer.size() * sizeof(localBuffer[0]));
 
 	auto deviceBuffer = logicalDevice->createBuffer({.size = localBufferByteCount, .usage = vk::BufferUsageFlagBits::eStorageBuffer});
@@ -92,6 +95,7 @@ int main() try {
 			},
 		},
 		nullptr);
+
     
     auto commandPool = logicalDevice->createCommandPoolUnique({.queueFamilyIndex = computeQueueFamilyIndex});
     auto commandBuffer = logicalDevice->allocateCommandBuffers({.commandPool = *commandPool, .commandBufferCount = 1}).front();
@@ -99,25 +103,27 @@ int main() try {
     commandBuffer.begin(vk::CommandBufferBeginInfo{});
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, computePipelineLayout, 0, descriptorSets[0], nullptr);
-    commandBuffer.dispatch(512, 512, 1);
+    commandBuffer.dispatch(dim.x, dim.y, 1);
     commandBuffer.end();
-
+    
+    fmt::print("starting compute shader... ");
     computeQueue.submit({{
         .commandBufferCount = 1,
         .pCommandBuffers = &commandBuffer,
     }});
     computeQueue.waitIdle();
+    fmt::print("Finished!\n");
 
     logicalDevice->freeCommandBuffers(*commandPool, commandBuffer);
 
 	auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice->mapMemory(deviceBufferMemory, 0, deviceBufferMemoryRequirements.size));
 	std::memcpy(localBuffer.data(), vertexbufferDeviceDataPtr, localBufferByteCount);
 	logicalDevice->unmapMemory(deviceBufferMemory);
-    
-    auto savePPM = [](const std::filesystem::path &filepath, const std::vector<std::uint32_t> buffer) {
+
+    auto savePPM = [](const std::filesystem::path &filepath, const std::vector<std::uint32_t> buffer, glm::ivec2 dim) {
         std::ofstream output_file(filepath, std::ios::binary);
         if (output_file.is_open()) {
-            output_file << "P6\n" << 512 << " " << 512 << "\n255\n";
+            output_file << "P6\n" << dim.x << " " << dim.y << "\n255\n";
             for (const auto &p : buffer) {
                 std::uint8_t r = (p >> 0x18) & 0xff;
                 std::uint8_t g = (p >> 0x10) & 0xff;
@@ -127,7 +133,9 @@ int main() try {
         }
     };
 
-    savePPM("build/compute.ppm", localBuffer);
+    fmt::print("Saving image... ");
+    savePPM("build/compute.ppm", localBuffer, dim);
+    fmt::print("Finished\n");
 
 } catch (const vk::SystemError &e) {
 	fmt::print("vk::SystemError: {}", e.what());

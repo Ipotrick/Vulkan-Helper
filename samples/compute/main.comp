@@ -5,10 +5,45 @@ layout(set = 0, binding = 0) buffer OutputBuffer {
 } outputBuffer;
 
 void main() {
-    uint col = 0x000000ff;
+    uint outputCol = 0x00000000;
+    vec2 dim = vec2(512, 512);
+    vec2 subSamples = vec2(4);
+    float subSampleContrib = 1.0f / subSamples.x / subSamples.y;
+    vec2 center = vec2(-0.5, 0);
+    vec2 span = vec2(3.2, 3.2);
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / dim;
+    vec2 cOff = vec2(1.0f) / dim / subSamples;
+    float value = 0.0f;
 
-    col |= (gl_GlobalInvocationID.x / 2 & 0xff) << 0x18;
-    col |= (gl_GlobalInvocationID.y / 2 & 0xff) << 0x10;
+    for (uint subY = 0; subY < subSamples.y; ++subY) {
+        for (uint subX = 0; subX < subSamples.x; ++subX) {
+            vec2 c = (vec2(uv.x, 1 - uv.y) - 0.5) * span + center + cOff * vec2(subX, subY);
+            vec2 z = c;
 
-    outputBuffer.col[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * 512] = col;
+            uint iter = 0;
+            const uint MAX_ITER = 1000;
+            for (; iter < MAX_ITER; ++iter) {
+                vec2 tz = z;
+
+                z.x = tz.x * tz.x - tz.y * tz.y;
+                z.y = 2 * tz.x * tz.y;
+
+                z += c;
+
+                if (z.x * z.x + z.y * z.y > 2 * 2) {
+                    value += subSampleContrib / MAX_ITER * (1 + iter);
+                    break;
+                }
+            }
+        }
+    }
+
+    vec4 col(vec3(pow(value, 0.5)), 1);
+
+    outputCol |= (uint(col.r * 255) & 0xff) << 0x18;
+    outputCol |= (uint(col.g * 255) & 0xff) << 0x10;
+    outputCol |= (uint(col.b * 255) & 0xff) << 0x08;
+    outputCol |= (uint(col.a * 255) & 0xff) << 0x00;
+
+    outputBuffer.col[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * 512] = outputCol;
 }
