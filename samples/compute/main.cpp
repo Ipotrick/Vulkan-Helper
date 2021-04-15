@@ -106,13 +106,23 @@ int main() try {
     commandBuffer.dispatch(dim.x, dim.y, 1);
     commandBuffer.end();
     
-    fmt::print("starting compute shader... ");
-    computeQueue.submit({{
-        .commandBufferCount = 1,
-        .pCommandBuffers = &commandBuffer,
-    }});
-    computeQueue.waitIdle();
-    fmt::print("Finished!\n");
+    double duration = 0.0;
+
+    for (int i = 0; i < 10; ++i) {
+        fmt::print("starting compute shader... ");
+        auto t0 = std::chrono::high_resolution_clock::now();
+        computeQueue.submit({{
+            .commandBufferCount = 1,
+            .pCommandBuffers = &commandBuffer,
+        }});
+        computeQueue.waitIdle();
+        auto t1 = std::chrono::high_resolution_clock::now();
+        double thisDur = std::chrono::duration<double>(t1 - t0).count();
+        duration += thisDur;
+        fmt::print("Finished! took {}s\n", thisDur);
+    }
+    duration /= 10;
+    fmt::print("Average duration {}s ({} fps)\n", duration, 1.0 / duration);
 
     logicalDevice->freeCommandBuffers(*commandPool, commandBuffer);
 
@@ -136,6 +146,8 @@ int main() try {
     fmt::print("Saving image... ");
     savePPM("build/compute.ppm", localBuffer, dim);
     fmt::print("Finished\n");
+
+    std::cin.get();
 
 } catch (const vk::SystemError &e) {
 	fmt::print("vk::SystemError: {}", e.what());

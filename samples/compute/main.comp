@@ -7,7 +7,7 @@ layout(set = 0, binding = 0) buffer OutputBuffer {
 void main() {
     uint outputCol = 0x00000000;
     vec2 dim = vec2(512, 512);
-    vec2 subSamples = vec2(4);
+    vec2 subSamples = vec2(2);
     float subSampleContrib = 1.0f / subSamples.x / subSamples.y;
     vec2 center = vec2(-0.5, 0);
     vec2 span = vec2(3.2, 3.2);
@@ -38,7 +38,7 @@ void main() {
         }
     }
 
-    vec4 col(vec3(pow(value, 0.5)), 1);
+    vec4 col = vec4(vec3(pow(value, 0.5)), 1);
 
     outputCol |= (uint(col.r * 255) & 0xff) << 0x18;
     outputCol |= (uint(col.g * 255) & 0xff) << 0x10;
