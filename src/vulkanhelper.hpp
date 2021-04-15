@@ -473,9 +473,9 @@ VKAPI_ATTR void VKAPI_CALL vkDestroyDebugUtilsMessengerEXT(VkInstance instance, 
 namespace vkh {
 	vk::UniqueInstance createInstance(const std::vector<const char *> &layers, const std::vector<const char *> &extensions);
 
-	vk::UniqueDebugUtilsMessengerEXT createDebugMessenger(const vk::UniqueInstance &instance);
+	vk::UniqueDebugUtilsMessengerEXT createDebugMessenger(vk::Instance instance);
 
-	vk::PhysicalDevice selectPhysicalDevice(const vk::UniqueInstance &instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability);
+	vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, const std::function<std::size_t(vk::PhysicalDevice)> &rateDeviceSuitability);
 
     vk::UniqueDevice createLogicalDevice(vk::PhysicalDevice physicalDevice, const std::set<std::size_t> &queueIndices, const std::vector<const char *> &extensions);
 
@@ -493,7 +493,7 @@ namespace vkh {
 		});
 	}
 
-	vk::UniqueDebugUtilsMessengerEXT createDebugMessenger(const vk::UniqueInstance &instance) {
+	vk::UniqueDebugUtilsMessengerEXT createDebugMessenger(vk::Instance instance) {
 		vkh_detail::pfnVkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
 		if (!vkh_detail::pfnVkCreateDebugUtilsMessengerEXT)
 			throw std::runtime_error("GetInstanceProcAddr: Unable to find pfnVkCreateDebugUtilsMessengerEXT function.");
@@ -501,7 +501,7 @@ namespace vkh {
 		if (!vkh_detail::pfnVkDestroyDebugUtilsMessengerEXT)
 			throw std::runtime_error("GetInstanceProcAddr: Unable to find pfnVkDestroyDebugUtilsMessengerEXT function.");
 
-		return instance->createDebugUtilsMessengerEXTUnique(vk::DebugUtilsMessengerCreateInfoEXT{
+		return instance.createDebugUtilsMessengerEXTUnique(vk::DebugUtilsMessengerCreateInfoEXT{
 			.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
 			.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
 			.pfnUserCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -570,7 +570,7 @@ namespace vkh {
 				.pQueuePriorities = &queuePriority,
 			});
 		}
-		return physicalDevice.createDevice({
+		return physicalDevice.createDeviceUnique({
 			.queueCreateInfoCount = static_cast<std::uint32_t>(deviceQueueCreateinfos.size()),
 			.pQueueCreateInfos = deviceQueueCreateinfos.data(),
 			.enabledExtensionCount = static_cast<uint32_t>(extensions.size()),

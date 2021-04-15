@@ -6,12 +6,12 @@
 int main() try {
 
 	auto vulkanInstance = vkh::createInstance({}, {VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
-	auto debugMessenger = vkh::createDebugMessenger(vulkanInstance);
+	auto debugMessenger = vkh::createDebugMessenger(*vulkanInstance);
 
 	std::vector<const char *> deviceExtensions{};
 	std::uint32_t computeQueueFamilyIndex = 0;
 
-	auto selectedPhysicalDevice = vkh::selectPhysicalDevice(vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
+	auto selectedPhysicalDevice = vkh::selectPhysicalDevice(*vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
 		std::size_t score = 0;
 
 		auto queueFamilyProperties = device.getQueueFamilyProperties();
@@ -29,34 +29,34 @@ int main() try {
 	fmt::print("Selected Physical Device: {}\n", selectedPhysicalDeviceProperties.deviceName);
 
 	auto logicalDevice = vkh::createLogicalDevice(selectedPhysicalDevice, {computeQueueFamilyIndex}, deviceExtensions);
-	auto computeQueue = logicalDevice.getQueue(computeQueueFamilyIndex, 0);
+	auto computeQueue = logicalDevice->getQueue(computeQueueFamilyIndex, 0);
 
 	std::vector<std::uint32_t> localBuffer;
 	localBuffer.resize(512 * 512);
     std::uint32_t localBufferByteCount = static_cast<std::uint32_t>(localBuffer.size() * sizeof(localBuffer[0]));
 
-	auto deviceBuffer = logicalDevice.createBuffer({.size = localBufferByteCount, .usage = vk::BufferUsageFlagBits::eStorageBuffer});
-	auto deviceBufferMemoryRequirements = logicalDevice.getBufferMemoryRequirements(deviceBuffer);
+	auto deviceBuffer = logicalDevice->createBuffer({.size = localBufferByteCount, .usage = vk::BufferUsageFlagBits::eStorageBuffer});
+	auto deviceBufferMemoryRequirements = logicalDevice->getBufferMemoryRequirements(deviceBuffer);
 	auto deviceBufferMemoryTypeIndex = vkh::findMemoryTypeIndex(
 		selectedPhysicalDevice.getMemoryProperties(),
 		deviceBufferMemoryRequirements.memoryTypeBits,
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-	auto deviceBufferMemory = logicalDevice.allocateMemory({
+	auto deviceBufferMemory = logicalDevice->allocateMemory({
 		.allocationSize = deviceBufferMemoryRequirements.size,
 		.memoryTypeIndex = deviceBufferMemoryTypeIndex,
 	});
-	logicalDevice.bindBufferMemory(deviceBuffer, deviceBufferMemory, 0);
+	logicalDevice->bindBufferMemory(deviceBuffer, deviceBufferMemory, 0);
 
 	vk::DescriptorSetLayoutBinding descriptorSetLayoutBindings[] = {
 		{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute, 0},
 	};
-	auto descriptorSetLayout = logicalDevice.createDescriptorSetLayout({.bindingCount = 1, .pBindings = descriptorSetLayoutBindings});
-	auto computePipelineLayout = logicalDevice.createPipelineLayout({.setLayoutCount = 1, .pSetLayouts = &descriptorSetLayout});
+	auto descriptorSetLayout = logicalDevice->createDescriptorSetLayout({.bindingCount = 1, .pBindings = descriptorSetLayoutBindings});
+	auto computePipelineLayout = logicalDevice->createPipelineLayout({.setLayoutCount = 1, .pSetLayouts = &descriptorSetLayout});
 
 	glslang::InitializeProcess();
 	auto computeSpv = loadGlslShaderToSpv("samples/compute/main.comp");
 	glslang::FinalizeProcess();
-	auto computeShaderModule = logicalDevice.createShaderModule({.codeSize = computeSpv.size() * sizeof(computeSpv[0]), .pCode = computeSpv.data()});
+	auto computeShaderModule = logicalDevice->createShaderModule({.codeSize = computeSpv.size() * sizeof(computeSpv[0]), .pCode = computeSpv.data()});
 
 	vk::ComputePipelineCreateInfo computePipelineCreateInfo{
 		.stage{
@@ -67,22 +67,22 @@ int main() try {
 		.layout = computePipelineLayout,
 	};
 
-	auto [computePipelineCreationResult, computePipeline] = logicalDevice.createComputePipeline(nullptr, computePipelineCreateInfo);
+	auto [computePipelineCreationResult, computePipeline] = logicalDevice->createComputePipeline(nullptr, computePipelineCreateInfo);
 	if (computePipelineCreationResult != vk::Result::eSuccess)
 		throw std::runtime_error("Failed to create compute pipeline");
 
-	logicalDevice.destroyShaderModule(computeShaderModule);
+	logicalDevice->destroyShaderModule(computeShaderModule);
 
 	vk::DescriptorPoolSize descriptorPoolSize{.type = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1};
-	auto descriptorPool = logicalDevice.createDescriptorPool({
+	auto descriptorPool = logicalDevice->createDescriptorPool({
 		.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 		.maxSets = 1,
 		.poolSizeCount = 1,
 		.pPoolSizes = &descriptorPoolSize,
 	});
-	auto descriptorSets = logicalDevice.allocateDescriptorSets({.descriptorPool = descriptorPool, .descriptorSetCount = 1, .pSetLayouts = &descriptorSetLayout});
+	auto descriptorSets = logicalDevice->allocateDescriptorSets({.descriptorPool = descriptorPool, .descriptorSetCount = 1, .pSetLayouts = &descriptorSetLayout});
 	vk::DescriptorBufferInfo descriptorBufferInfo(deviceBuffer, 0, localBufferByteCount);
-	logicalDevice.updateDescriptorSets(
+	logicalDevice->updateDescriptorSets(
 		{
 			vk::WriteDescriptorSet{
 				.dstSet = descriptorSets[0],
@@ -93,8 +93,8 @@ int main() try {
 		},
 		nullptr);
     
-    auto commandPool = logicalDevice.createCommandPool({.queueFamilyIndex = computeQueueFamilyIndex});
-    auto commandBuffer = logicalDevice.allocateCommandBuffers({.commandPool = commandPool, .commandBufferCount = 1}).front();
+    auto commandPool = logicalDevice->createCommandPoolUnique({.queueFamilyIndex = computeQueueFamilyIndex});
+    auto commandBuffer = logicalDevice->allocateCommandBuffers({.commandPool = *commandPool, .commandBufferCount = 1}).front();
 
     commandBuffer.begin(vk::CommandBufferBeginInfo{});
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
@@ -108,9 +108,11 @@ int main() try {
     }});
     computeQueue.waitIdle();
 
-	auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice.mapMemory(deviceBufferMemory, 0, deviceBufferMemoryRequirements.size));
+    logicalDevice->freeCommandBuffers(*commandPool, commandBuffer);
+
+	auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice->mapMemory(deviceBufferMemory, 0, deviceBufferMemoryRequirements.size));
 	std::memcpy(localBuffer.data(), vertexbufferDeviceDataPtr, localBufferByteCount);
-	logicalDevice.unmapMemory(deviceBufferMemory);
+	logicalDevice->unmapMemory(deviceBufferMemory);
     
     auto savePPM = [](const std::filesystem::path &filepath, const std::vector<std::uint32_t> buffer) {
         std::ofstream output_file(filepath, std::ios::binary);

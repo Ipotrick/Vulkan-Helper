@@ -210,12 +210,12 @@ std::vector<vk::Framebuffer> createFramebuffers(vk::Device logicalDevice, const 
 }
 
 struct HelloTriangle {
-	vk::Instance vulkanInstance;
-	vk::DebugUtilsMessengerEXT debugMessenger;
+	vk::UniqueInstance vulkanInstance;
+	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
 	vk::SurfaceKHR vulkanWindowSurface = nullptr;
 
 	vk::PhysicalDevice selectedPhysicalDevice;
-	vk::Device logicalDevice;
+	vk::UniqueDevice logicalDevice;
 	vk::Queue graphicsQueue, presentQueue;
 
 	vk::Buffer vertexbuffer;
@@ -258,7 +258,7 @@ struct HelloTriangle {
 
 	void initInstance() {
 		vulkanInstance = vkh::createInstance({}, {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, "VK_KHR_surface", "VK_KHR_win32_surface"});
-		debugMessenger = vkh::createDebugMessenger(vulkanInstance);
+		debugMessenger = vkh::createDebugMessenger(*vulkanInstance);
 	}
 
 	void initRenderContext() {
@@ -273,7 +273,7 @@ struct HelloTriangle {
 	void initDevice() {
 		std::vector<const char *> deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 		// physical device selection
-		selectedPhysicalDevice = vkh::selectPhysicalDevice(vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
+		selectedPhysicalDevice = vkh::selectPhysicalDevice(*vulkanInstance, [&](vk::PhysicalDevice device) -> std::size_t {
 			std::size_t score = 0;
 			auto indices = findQueueFamilyIndices(device, vulkanWindowSurface);
 			auto deviceProperties = device.getProperties();
@@ -305,51 +305,51 @@ struct HelloTriangle {
 		// logical device creation
 		logicalDevice = vkh::createLogicalDevice(selectedPhysicalDevice, queueIndices.uniqueIndices(), deviceExtensions);
 		// queue retrieval
-		graphicsQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.graphics.value()), 0);
-		presentQueue = logicalDevice.getQueue(static_cast<std::uint32_t>(queueIndices.presentation.value()), 0);
+		graphicsQueue = logicalDevice->getQueue(static_cast<std::uint32_t>(queueIndices.graphics.value()), 0);
+		presentQueue = logicalDevice->getQueue(static_cast<std::uint32_t>(queueIndices.presentation.value()), 0);
 	}
 
 	void initVertexbuffer() {
-		vertexbuffer = logicalDevice.createBuffer({.size = sizeof(vertexData), .usage = vk::BufferUsageFlagBits::eVertexBuffer});
-		auto vertexbufferMemoryRequirements = logicalDevice.getBufferMemoryRequirements(vertexbuffer);
+		vertexbuffer = logicalDevice->createBuffer({.size = sizeof(vertexData), .usage = vk::BufferUsageFlagBits::eVertexBuffer});
+		auto vertexbufferMemoryRequirements = logicalDevice->getBufferMemoryRequirements(vertexbuffer);
 		auto vertexbufferMemoryTypeIndex = vkh::findMemoryTypeIndex(
 			selectedPhysicalDevice.getMemoryProperties(),
 			vertexbufferMemoryRequirements.memoryTypeBits,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		vertexbufferMemory = logicalDevice.allocateMemory({
+		vertexbufferMemory = logicalDevice->allocateMemory({
 			.allocationSize = vertexbufferMemoryRequirements.size,
 			.memoryTypeIndex = vertexbufferMemoryTypeIndex,
 		});
-		logicalDevice.bindBufferMemory(vertexbuffer, vertexbufferMemory, 0);
-		auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice.mapMemory(vertexbufferMemory, 0, vertexbufferMemoryRequirements.size));
+		logicalDevice->bindBufferMemory(vertexbuffer, vertexbufferMemory, 0);
+		auto vertexbufferDeviceDataPtr = static_cast<std::uint8_t *>(logicalDevice->mapMemory(vertexbufferMemory, 0, vertexbufferMemoryRequirements.size));
 		std::memcpy(vertexbufferDeviceDataPtr, vertexData, sizeof(vertexData));
-		logicalDevice.unmapMemory(vertexbufferMemory);
+		logicalDevice->unmapMemory(vertexbufferMemory);
 	}
 
 	void initSwapchain() {
 		auto queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
-		auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
+		auto createSwapchainResult = createSwapchain(selectedPhysicalDevice, *logicalDevice, queueIndices, vulkanWindowSurface, frameSizeX, frameSizeY);
 		swapchain = std::get<0>(createSwapchainResult);
 		swapchainDetails = std::get<1>(createSwapchainResult);
-		swapchainImages = logicalDevice.getSwapchainImagesKHR(swapchain);
-		swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, logicalDevice);
+		swapchainImages = logicalDevice->getSwapchainImagesKHR(swapchain);
+		swapchainImageViews = createSwapchainImageViews(swapchainImages, swapchainDetails, *logicalDevice);
 	}
 
 	void initPipeline() {
-		renderpass = createRenderpass(logicalDevice, swapchainDetails.format);
-		auto createGraphicsPipelineResult = createGraphicsPipeline(logicalDevice, renderpass, sizeof(TriangleVertex));
+		renderpass = createRenderpass(*logicalDevice, swapchainDetails.format);
+		auto createGraphicsPipelineResult = createGraphicsPipeline(*logicalDevice, renderpass, sizeof(TriangleVertex));
 		graphicsPipeline = std::get<0>(createGraphicsPipelineResult);
 		graphicsPipelineLayout = std::get<1>(createGraphicsPipelineResult);
 
 		initFramebuffers();
 
 		auto queueIndices = findQueueFamilyIndices(selectedPhysicalDevice, vulkanWindowSurface);
-		commandPool = logicalDevice.createCommandPool({
+		commandPool = logicalDevice->createCommandPool({
 			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 			.queueFamilyIndex = static_cast<std::uint32_t>(queueIndices.graphics.value()),
 		});
 
-		commandBuffers = logicalDevice.allocateCommandBuffers({.commandPool = commandPool, .commandBufferCount = (std::uint32_t)swapchainFramebuffers.size()});
+		commandBuffers = logicalDevice->allocateCommandBuffers({.commandPool = commandPool, .commandBufferCount = (std::uint32_t)swapchainFramebuffers.size()});
 	}
 
 	void initSyncObjects() {
@@ -366,86 +366,81 @@ struct HelloTriangle {
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		for (size_t i = 0; i < MAX_IMAGES_IN_FLIGHT; i++) {
-			imagesAcquired[i] = logicalDevice.createSemaphore({});
-			drawsFinished[i] = logicalDevice.createSemaphore({});
-			inFlight[i] = logicalDevice.createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
+			imagesAcquired[i] = logicalDevice->createSemaphore({});
+			drawsFinished[i] = logicalDevice->createSemaphore({});
+			inFlight[i] = logicalDevice->createFence({.flags = vk::FenceCreateFlagBits::eSignaled});
 		}
 	}
 
 	void initFramebuffers() {
-		swapchainFramebuffers = createFramebuffers(logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
+		swapchainFramebuffers = createFramebuffers(*logicalDevice, swapchainImageViews, renderpass, frameSizeX, frameSizeY);
 	}
 
 	void deinit() {
 		if (vulkanInstance) {
 			if (logicalDevice) {
-				logicalDevice.waitIdle();
+				logicalDevice->waitIdle();
 				deinitSwapchain();
 
 				for (auto elem : inFlight) {
 					if (elem) {
-						while (vk::Result::eTimeout == logicalDevice.waitForFences(elem, VK_TRUE, FENCE_TIMEOUT)) {
+						while (vk::Result::eTimeout == logicalDevice->waitForFences(elem, VK_TRUE, FENCE_TIMEOUT)) {
 						}
-						logicalDevice.destroyFence(elem);
+						logicalDevice->destroyFence(elem);
 					}
 				}
 				for (auto elem : imagesAcquired)
 					if (elem)
-						logicalDevice.destroySemaphore(elem);
+						logicalDevice->destroySemaphore(elem);
 				for (auto elem : drawsFinished)
 					if (elem)
-						logicalDevice.destroySemaphore(elem);
+						logicalDevice->destroySemaphore(elem);
 
 				if (commandPool)
-					logicalDevice.destroyCommandPool(commandPool);
+					logicalDevice->destroyCommandPool(commandPool);
 
 				if (graphicsPipelineLayout)
-					logicalDevice.destroyPipelineLayout(graphicsPipelineLayout);
+					logicalDevice->destroyPipelineLayout(graphicsPipelineLayout);
 				if (graphicsPipeline)
-					logicalDevice.destroyPipeline(graphicsPipeline);
+					logicalDevice->destroyPipeline(graphicsPipeline);
 				if (renderpass)
-					logicalDevice.destroyRenderPass(renderpass);
+					logicalDevice->destroyRenderPass(renderpass);
 
 				if (vertexbufferMemory)
-					logicalDevice.freeMemory(vertexbufferMemory);
+					logicalDevice->freeMemory(vertexbufferMemory);
 				if (vertexbuffer)
-					logicalDevice.destroyBuffer(vertexbuffer);
-				logicalDevice.destroy();
+					logicalDevice->destroyBuffer(vertexbuffer);
 			}
-
-			if (debugMessenger)
-				vulkanInstance.destroyDebugUtilsMessengerEXT(debugMessenger);
-			vulkanInstance.destroy();
 		}
 	}
 
 	void deinitSwapchain() {
 		if (vulkanInstance && logicalDevice) {
-            logicalDevice.waitIdle();
+            logicalDevice->waitIdle();
 			for (auto elem : commandBuffers)
 				if (elem)
-					logicalDevice.freeCommandBuffers(commandPool, elem);
+					logicalDevice->freeCommandBuffers(commandPool, elem);
 			for (const auto &elem : swapchainFramebuffers)
 				if (elem)
-					logicalDevice.destroyFramebuffer(elem);
+					logicalDevice->destroyFramebuffer(elem);
 			swapchainFramebuffers.clear();
 			for (auto &view : swapchainImageViews)
 				if (view)
-					logicalDevice.destroyImageView(view);
+					logicalDevice->destroyImageView(view);
 			swapchainImageViews.clear();
 			if (swapchain)
-				logicalDevice.destroySwapchainKHR(swapchain);
+				logicalDevice->destroySwapchainKHR(swapchain);
 			if (vulkanWindowSurface)
-				vulkanInstance.destroySurfaceKHR(vulkanWindowSurface);
+				vulkanInstance->destroySurfaceKHR(vulkanWindowSurface);
 			vulkanWindowSurface = nullptr;
 		}
 	}
 
 	void draw() {
-		while (vk::Result::eTimeout == logicalDevice.waitForFences(inFlight[currentFrame], VK_TRUE, FENCE_TIMEOUT)) {
+		while (vk::Result::eTimeout == logicalDevice->waitForFences(inFlight[currentFrame], VK_TRUE, FENCE_TIMEOUT)) {
 		}
 		// prepare frame for drawing
-		auto imageIndex = logicalDevice.acquireNextImageKHR(swapchain, FENCE_TIMEOUT, imagesAcquired[currentFrame], nullptr);
+		auto imageIndex = logicalDevice->acquireNextImageKHR(swapchain, FENCE_TIMEOUT, imagesAcquired[currentFrame], nullptr);
 		if (imageIndex.result == vk::Result::eErrorOutOfDateKHR) {
 			throw std::runtime_error("Swapchain OUT OF DATE");
 		} else {
@@ -460,7 +455,7 @@ struct HelloTriangle {
 		clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
 
 		if (imagesInFlight[imageIndex.value]) {
-			while (vk::Result::eTimeout == logicalDevice.waitForFences(imagesInFlight[imageIndex.value], VK_TRUE, FENCE_TIMEOUT)) {
+			while (vk::Result::eTimeout == logicalDevice->waitForFences(imagesInFlight[imageIndex.value], VK_TRUE, FENCE_TIMEOUT)) {
 			}
 		}
 		imagesInFlight[imageIndex.value] = inFlight[currentFrame];
@@ -491,7 +486,7 @@ struct HelloTriangle {
 		vk::Semaphore waitSemaphores[] = {imagesAcquired[currentFrame]};
 		vk::Semaphore signalSemaphores[] = {drawsFinished[currentFrame]};
 		vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-		auto resetFenceResult = logicalDevice.resetFences(1, &inFlight[currentFrame]);
+		auto resetFenceResult = logicalDevice->resetFences(1, &inFlight[currentFrame]);
 		graphicsQueue.submit(
 			{{
 				.waitSemaphoreCount = 1,
