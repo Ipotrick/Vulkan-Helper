@@ -3,10 +3,9 @@ cmake_minimum_required(VERSION 3.12)
 project(Vulkan-Helper VERSION 0.1.1)
 
 find_package(Vulkan REQUIRED)
-find_package(fmt CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} INTERFACE)
-target_link_libraries(${PROJECT_NAME} INTERFACE Vulkan::Vulkan fmt::fmt)
+target_link_libraries(${PROJECT_NAME} INTERFACE Vulkan::Vulkan)
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 
 option(VULKAN_HELPER_BUILD_TESTS "Turn on to build tests" OFF)

@@ -514,32 +514,31 @@ namespace vkh {
 					// UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
 					return VK_FALSE;
 				}
-				std::string message = fmt::format(
-					"{}: {}:\n\tmessage name   = <{}>\n\tmessage number = {}\n\tmessage        = <{}>\n",
-					vk::to_string(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity)),
-					vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(messageTypes)),
-					pCallbackData->pMessageIdName,
-					pCallbackData->messageIdNumber,
-					pCallbackData->pMessage);
+				std::string message = 
+					vk::to_string(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity)) + ": " + 
+					vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(messageTypes)) + ":\n\ttmessage name   = <" + 
+					pCallbackData->pMessageIdName + ">\n\tmessage number = " +
+					pCallbackData->messageIdNumber + "\n\tmessage        = <"
+					pCallbackData->pMessage) + ">\n";
 				if (0 < pCallbackData->queueLabelCount) {
-					message += fmt::format("\tQueue Labels:\n");
+					message += "\tQueue Labels:\n";
 					for (uint8_t i = 0; i < pCallbackData->queueLabelCount; i++)
-						message += fmt::format("\t\tlabelName = <{}>\n", pCallbackData->pQueueLabels[i].pLabelName);
+						message += "\t\tlabelName = <" + pCallbackData->pQueueLabels[i].pLabelName + ">\n";
 				}
 				if (0 < pCallbackData->cmdBufLabelCount) {
-					message += fmt::format("\tCommandBuffer Labels:\n");
+					message += "\tCommandBuffer Labels:\n";
 					for (uint8_t i = 0; i < pCallbackData->cmdBufLabelCount; i++)
-						message += fmt::format("\t\tlabelName = <{}>\n", pCallbackData->pCmdBufLabels[i].pLabelName);
+						message += "\t\tlabelName = <" + pCallbackData->pCmdBufLabels[i].pLabelName + ">\n";
 				}
 				if (0 < pCallbackData->objectCount) {
-					message += fmt::format("\tObjects:\n");
+					message += "\tObjects:\n";
 					for (uint8_t i = 0; i < pCallbackData->cmdBufLabelCount; i++) {
-						message += fmt::format("\t\tlabelName = <{}>\nObject {}\n\t\t\tobjectType   = {}\n\t\t\tobjectHandle = {}\n",
-											   pCallbackData->pCmdBufLabels[i].pLabelName, i,
-											   vk::to_string(static_cast<vk::ObjectType>(pCallbackData->pObjects[i].objectType)),
-											   pCallbackData->pObjects[i].objectHandle);
+						message += "\t\tlabelName = <" + 
+											   pCallbackData->pCmdBufLabels[i].pLabelName + ">\nObject " + i + "\n\t\t\tobjectType   = " + 
+											   vk::to_string(static_cast<vk::ObjectType>(pCallbackData->pObjects[i].objectType)) + "\n\t\t\tobjectHandle = " +
+											   pCallbackData->pObjects[i].objectHandle) + "\n";
 						if (pCallbackData->pObjects[i].pObjectName)
-							message += fmt::format("\t\t\tobjectName   = <{}>\n", pCallbackData->pObjects[i].pObjectName);
+							message += "\t\t\tobjectName   = <" + pCallbackData->pObjects[i].pObjectName + ">\n";
 					}
 				}
 				MessageBox(nullptr, message.c_str(), "Vulkan Validation Error", MB_OK);
