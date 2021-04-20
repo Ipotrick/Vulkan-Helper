@@ -628,8 +628,6 @@ namespace vkh {
 	}
 #endif
 
-
-	
 	class CommandBufferAllocator {
 	public:
 		CommandBufferAllocator() = default;
@@ -679,8 +677,6 @@ namespace vkh {
 
 #endif
 } // namespace vkh
-
-
 
 namespace vkh_detail {
 	static PFN_vkCreateDebugUtilsMessengerEXT pfnVkCreateDebugUtilsMessengerEXT;
