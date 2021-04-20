@@ -4,3 +4,4 @@ project(${PROJECT_NAME}_tests)
 
 add_executable(${PROJECT_NAME}_main main.cpp)
 target_link_libraries(${PROJECT_NAME}_main PRIVATE Vulkan-Helper)
+target_include_directories(${PROJECT_NAME}_main PRIVATE "../include")

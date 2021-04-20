@@ -17,7 +17,7 @@ int main() try {
 	auto glfwWindowPtr = glfwCreateWindow(helloTriangle.frameSizeX, helloTriangle.frameSizeY, "GLFW Hello Triangle", nullptr, nullptr);
 
 	auto vkCApiSurfacePtr = static_cast<VkSurfaceKHR>(helloTriangle.vulkanWindowSurface);
-	glfwCreateWindowSurface(*helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
+	glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
 	helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
 
 	helloTriangle.initRenderContext();

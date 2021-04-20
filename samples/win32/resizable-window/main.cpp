@@ -9,7 +9,7 @@ public:
 		helloTriangle.frameSizeX = 800;
 		helloTriangle.frameSizeY = 600;
 		helloTriangle.initInstance();
-		helloTriangle.vulkanWindowSurface = Window::createVulkanSurface(*helloTriangle.vulkanInstance);
+		helloTriangle.vulkanWindowSurface = Window::createVulkanSurface(helloTriangle.vulkanInstance);
 		helloTriangle.initRenderContext();
 	}
 
@@ -28,7 +28,7 @@ public:
 		helloTriangle.deinitSwapchain();
 
 		if (!helloTriangle.vulkanWindowSurface) {
-			helloTriangle.vulkanWindowSurface = Window::createVulkanSurface(*helloTriangle.vulkanInstance);
+			helloTriangle.vulkanWindowSurface = Window::createVulkanSurface(helloTriangle.vulkanInstance);
 			auto queueIndices = findQueueFamilyIndices(helloTriangle.selectedPhysicalDevice, helloTriangle.vulkanWindowSurface);
 			if (!helloTriangle.selectedPhysicalDevice.getSurfaceSupportKHR(
 					static_cast<std::uint32_t>(queueIndices.presentation.value()),

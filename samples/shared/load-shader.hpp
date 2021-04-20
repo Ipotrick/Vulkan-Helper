@@ -1,6 +1,10 @@
 #pragma once
 
-#include <glslang/SPIRV/GlslangToSpv.h>
+#include <fmt/core.h>
+#include <filesystem>
+#include <fstream>
+
+#include <SPIRV/GlslangToSpv.h>
 #include <glslang/Include/ResourceLimits.h>
 
 static constexpr TBuiltInResource getResource() {

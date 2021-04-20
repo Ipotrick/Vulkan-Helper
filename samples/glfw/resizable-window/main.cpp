@@ -17,7 +17,7 @@ int main() try {
 	glfwSetWindowUserPointer(glfwWindowPtr, &helloTriangle);
 
 	auto vkCApiSurfacePtr = static_cast<VkSurfaceKHR>(helloTriangle.vulkanWindowSurface);
-	glfwCreateWindowSurface(*helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
+	glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
 	helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
 
 	glfwSetWindowSizeCallback(glfwWindowPtr, [](GLFWwindow *glfwWindowPtr, int sizeX, int sizeY) -> void {
@@ -30,7 +30,7 @@ int main() try {
 
 		if (!helloTriangle.vulkanWindowSurface) {
 			auto vkCApiSurfacePtr = static_cast<VkSurfaceKHR>(helloTriangle.vulkanWindowSurface);
-			glfwCreateWindowSurface(*helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
+			glfwCreateWindowSurface(helloTriangle.vulkanInstance, glfwWindowPtr, nullptr, &vkCApiSurfacePtr);
 			helloTriangle.vulkanWindowSurface = vkCApiSurfacePtr;
 
 			auto queueIndices = findQueueFamilyIndices(helloTriangle.selectedPhysicalDevice, helloTriangle.vulkanWindowSurface);
