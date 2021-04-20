@@ -131,7 +131,6 @@ namespace vkh {
 		vk::UniquePipeline pipeline;
 		vk::UniquePipelineLayout layout;
 	};
-
 	class GraphicsPipelineBuilder {
 	public:
 		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0, vk::PipelineCache pipelineCache = nullptr);
@@ -148,6 +147,7 @@ namespace vkh {
 		GraphicsPipelineBuilder &addShaderStage(const vk::PipelineShaderStageCreateInfo &shaderStage);
 		GraphicsPipelineBuilder &addDynamicState(const vk::DynamicState &dynamicstates);
 		GraphicsPipelineBuilder &addPushConstants(const vk::PushConstantRange &pushconstants);
+		GraphicsPipelineBuilder &addDescriptorLayout(const vk::DescriptorSetLayout &layout);
 
 	private:
 		std::optional<vk::Viewport> viewport;
@@ -162,6 +162,7 @@ namespace vkh {
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 		std::vector<vk::DynamicState> dynamicStateEnable;
 		std::vector<vk::PushConstantRange> pushConstants;
+		std::vector<vk::DescriptorSetLayout> descLayouts;
 	};
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
@@ -214,6 +215,11 @@ namespace vkh {
 		return *this;
 	}
 
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addDescriptorLayout(const vk::DescriptorSetLayout &layout) {
+		this->descLayouts.push_back(layout);
+		return *this;
+	}
+
 	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode) {
 		return vk::PipelineRasterizationStateCreateInfo{
 			.polygonMode = polygonMode,
@@ -257,9 +263,12 @@ namespace vkh {
 
 		//build pipeline layout:
 		vk::PipelineLayoutCreateInfo layoutCI{
+			.setLayoutCount = static_cast<uint32_t>(descLayouts.size()),
+			.pSetLayouts = descLayouts.data(),
 			.pushConstantRangeCount = uint32_t(pushConstants.size()),
 			.pPushConstantRanges = pushConstants.data(),
 		};
+
 		pipeline.layout = device.createPipelineLayoutUnique(layoutCI);
 
 		vk::PipelineViewportStateCreateInfo viewportStateCI{
@@ -269,6 +278,7 @@ namespace vkh {
 			.pScissors = &pscissor,
 		};
 
+		vk::PipelineColorBlendAttachmentState defaultColorBlendAttachmentStateCI = makeDefaultColorBlendSAttachmentState();
 		vk::PipelineColorBlendStateCreateInfo colorBlendingSCI;
 		if (this->colorBlend.has_value()) {
 			colorBlendingSCI = this->colorBlend.value();
@@ -280,13 +290,11 @@ namespace vkh {
 				.pAttachments = this->colorAttachmentBlends.data(),
 			};
 		} else {
-			vk::PipelineColorBlendAttachmentState colorBlendAttachmentStateCI = makeDefaultColorBlendSAttachmentState();
-
 			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
 				.logicOpEnable = VK_FALSE,
 				.logicOp = vk::LogicOp::eCopy,
 				.attachmentCount = 1,
-				.pAttachments = &colorBlendAttachmentStateCI,
+				.pAttachments = &defaultColorBlendAttachmentStateCI,
 			};
 		}
 
@@ -628,8 +636,6 @@ namespace vkh {
 	}
 #endif
 
-
-	
 	class CommandBufferAllocator {
 	public:
 		CommandBufferAllocator() = default;
@@ -679,8 +685,6 @@ namespace vkh {
 
 #endif
 } // namespace vkh
-
-
 
 namespace vkh_detail {
 	static PFN_vkCreateDebugUtilsMessengerEXT pfnVkCreateDebugUtilsMessengerEXT;
@@ -767,7 +771,7 @@ namespace vkh {
 							message += std::string("\t\t\tobjectName   = <") + pCallbackData->pObjects[i].pObjectName + ">\n";
 					}
 				}
-				MessageBox(nullptr, message.c_str(), "Vulkan Validation Error", MB_OK);
+				//MessageBox(nullptr, message.c_str(), "Vulkan Validation Error", MB_OK);
 				return VK_TRUE;
 			},
 		});
