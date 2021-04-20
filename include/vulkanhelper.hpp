@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <functional>
 #include <set>
+#include <unordered_map>
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
@@ -458,6 +459,47 @@ namespace vkh {
 		std::vector<T> usedList;
 	};
 
+	class DescriptorLayoutCache {
+	public:
+		DescriptorLayoutCache(vk::Device device);
+		vk::DescriptorSetLayout getLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings);
+
+	private:
+		struct DescriptorLayoutHash {
+			std::size_t operator()(const std::vector<vk::DescriptorSetLayoutBinding> &bindings) const;
+		};
+
+		vk::Device device;
+		std::unordered_map<std::vector<vk::DescriptorSetLayoutBinding>, vk::UniqueDescriptorSetLayout, DescriptorLayoutHash> bindingsToLayout;
+	};
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	DescriptorLayoutCache::DescriptorLayoutCache(vk::Device device)
+		: device{device} {
+	}
+
+	vk::DescriptorSetLayout DescriptorLayoutCache::getLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings) {
+		auto iter = bindingsToLayout.find(bindings);
+		if (iter != bindingsToLayout.end()) {
+			return *iter->second;
+		} else {
+			auto allocateInfo = vk::DescriptorSetLayoutCreateInfo{
+				.bindingCount = static_cast<uint32_t>(bindings.size()),
+				.pBindings = bindings.data(),
+			};
+			return *(bindingsToLayout[bindings] = device.createDescriptorSetLayoutUnique(allocateInfo));
+		}
+	}
+	std::size_t DescriptorLayoutCache::DescriptorLayoutHash::operator()(const std::vector<vk::DescriptorSetLayoutBinding> &bindings) const {
+		size_t h{0};
+		for (const auto &binding : bindings) {
+			h ^= static_cast<size_t>(binding.descriptorType);
+			h ^= static_cast<size_t>(binding.descriptorType);
+		}
+		return h;
+	}
+#endif
+
 	class DescriptorAllocator {
 	public:
 		DescriptorAllocator() = default;
@@ -635,6 +677,18 @@ namespace vkh {
 		return std::move(result);
 	}
 #endif
+
+	vk::DescriptorSet createDescriptorSet(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, DescriptorAllocator &alloc, DescriptorLayoutCache &layoutCache);
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	vk::DescriptorSet createDescriptorSet(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, DescriptorAllocator &alloc, DescriptorLayoutCache &layoutCache) {
+		return alloc.allocate(layoutCache.getLayout(bindings));
+	}
+#endif
+
+	// TODO ADD DESCRIPTOR SET BUILDER THAT DIRECTLY LINKS THE DESCRIPTORS
+
+	// TODO ADD EASY TO USE DESCRIPTOR BINDING UPDATE FUNCTION
 
 	class CommandBufferAllocator {
 	public:
