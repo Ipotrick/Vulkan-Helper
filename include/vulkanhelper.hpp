@@ -455,8 +455,8 @@ namespace vkh {
 		DescriptorAllocator() = default;
 		DescriptorAllocator(vk::Device device, std::vector<vk::DescriptorPoolSize> specificPoolSizes = {}, vk::DescriptorPoolCreateFlagBits poolCreateFlags = {}, uint32_t maxSetsPerPool = 500);
 		void reset();
-		vk::UniqueDescriptorSet allocate(vk::DescriptorSetLayout layout);
-		std::vector<vk::UniqueDescriptorSet> allocate(vk::DescriptorSetLayout layout, uint32_t count);
+		vk::DescriptorSet allocate(vk::DescriptorSetLayout layout);
+		std::vector<vk::DescriptorSet> allocate(vk::DescriptorSetLayout layout, uint32_t count);
 
 	protected:
 		DescriptorAllocator(vk::Device device, vk::DescriptorPoolCreateFlagBits poolFlags, uint32_t maxSetsPerPool);
@@ -523,13 +523,13 @@ namespace vkh {
 		}
 		usedPools.clear();
 	}
-	vk::UniqueDescriptorSet DescriptorAllocator::allocate(vk::DescriptorSetLayout layout) {
-		auto result = device.allocateDescriptorSetsUnique({.descriptorPool = *currentPool, .descriptorSetCount = 1, .pSetLayouts = &layout});
+	vk::DescriptorSet DescriptorAllocator::allocate(vk::DescriptorSetLayout layout) {
+		auto result = device.allocateDescriptorSets({.descriptorPool = *currentPool, .descriptorSetCount = 1, .pSetLayouts = &layout});
 		if (result.size() == 0) /* we need to reallocate with another pool */ {
 			usedPools.push_back(std::move(currentPool));
 			currentPool = getUnusedPool();
 
-			result = device.allocateDescriptorSetsUnique({.descriptorPool = *currentPool, .descriptorSetCount = 1, .pSetLayouts = &layout});
+			result = device.allocateDescriptorSets({.descriptorPool = *currentPool, .descriptorSetCount = 1, .pSetLayouts = &layout});
 
 			if (result.size() == 0) {
 				// possible cause for this error is that the requested descriptor count exceeds the maximum descriptor pool size
@@ -540,14 +540,14 @@ namespace vkh {
 
 		return std::move(result.front());
 	}
-	std::vector<vk::UniqueDescriptorSet> DescriptorAllocator::allocate(vk::DescriptorSetLayout layout, uint32_t count) {
+	std::vector<vk::DescriptorSet> DescriptorAllocator::allocate(vk::DescriptorSetLayout layout, uint32_t count) {
 		std::vector<vk::DescriptorSetLayout> layouts(count, layout);
-		auto result = device.allocateDescriptorSetsUnique({.descriptorPool = *currentPool, .descriptorSetCount = count, .pSetLayouts = layouts.data()});
+		auto result = device.allocateDescriptorSets({.descriptorPool = *currentPool, .descriptorSetCount = count, .pSetLayouts = layouts.data()});
 		if (result.size() == 0) /* we need to reallocate with another pool */ {
 			usedPools.push_back(std::move(currentPool));
 			currentPool = getUnusedPool();
 
-			result = device.allocateDescriptorSetsUnique({.descriptorPool = *currentPool, .descriptorSetCount = count, .pSetLayouts = layouts.data()});
+			result = device.allocateDescriptorSets({.descriptorPool = *currentPool, .descriptorSetCount = count, .pSetLayouts = layouts.data()});
 
 			if (result.size() == 0) {
 				// possible cause for this error is that the requested descriptor count exceeds the maximum descriptor pool size
@@ -627,7 +627,60 @@ namespace vkh {
 		return std::move(result);
 	}
 #endif
+
+
+	
+	class CommandBufferAllocator {
+	public:
+		CommandBufferAllocator() = default;
+		CommandBufferAllocator(vk::Device device, const vk::CommandPoolCreateInfo &poolCI, const vk::CommandBufferLevel &bufferLevel = vk::CommandBufferLevel::ePrimary);
+
+		void flush();
+
+		vk::CommandBuffer getElement();
+
+		vk::CommandPool get();
+
+		vk::CommandPool operator*();
+
+	private:
+		vk::Device device;
+		vk::UniqueCommandPool pool;
+		vk::CommandBufferLevel bufferLevel;
+		std::vector<vk::CommandBuffer> unused;
+		std::vector<vk::CommandBuffer> used;
+	};
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	CommandBufferAllocator::CommandBufferAllocator(vk::Device device, const vk::CommandPoolCreateInfo &createInfo, const vk::CommandBufferLevel &bufferLevel) : device{device}, pool{device.createCommandPoolUnique(createInfo)}, bufferLevel{bufferLevel} {}
+	void CommandBufferAllocator::flush() {
+		device.resetCommandPool(*pool);
+		unused.insert(unused.end(), used.begin(), used.end());
+		used.clear();
+	}
+
+	vk::CommandBuffer CommandBufferAllocator::getElement() {
+		if (unused.empty()) {
+			unused.push_back(device.allocateCommandBuffers(vk::CommandBufferAllocateInfo{.commandPool = pool.get(), .level = bufferLevel, .commandBufferCount = 1}).back());
+		}
+		auto buffer = unused.back();
+		unused.pop_back();
+		used.push_back(buffer);
+		return buffer;
+	}
+
+	vk::CommandPool CommandBufferAllocator::get() {
+		return pool.get();
+	}
+
+	vk::CommandPool CommandBufferAllocator::operator*() {
+		return get();
+	}
+
+#endif
 } // namespace vkh
+
+
 
 namespace vkh_detail {
 	static PFN_vkCreateDebugUtilsMessengerEXT pfnVkCreateDebugUtilsMessengerEXT;
