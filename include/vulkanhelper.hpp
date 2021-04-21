@@ -8,10 +8,21 @@
 #include <set>
 #include <unordered_map>
 
+// If you want to use spirv reflect for reflection on descriptor sets in pipeline creation,
+// set the following define to your include path of spirv_reflect like the following:
+// #define VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH <spirv_reflect.h>
+
+#if defined(VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH)
+#define VULKANHELPER_USE_SPIRV_REFLECT
+#endif
+
 #if defined(VULKANHELPER_IMPLEMENTATION)
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <iostream>
 #include <fstream>
+#ifdef VULKANHELPER_USE_SPIRV_REFLECT
+#include VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH
+#endif
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -121,343 +132,6 @@ namespace vkh {
 			flags};
 	}
 #endif
-
-	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode);
-
-	vk::PipelineMultisampleStateCreateInfo makeDefaultMultisampleStateCreateInfo();
-
-	vk::PipelineColorBlendAttachmentState makeDefaultColorBlendSAttachmentState();
-
-	struct Pipeline {
-		vk::UniquePipeline pipeline;
-		vk::UniquePipelineLayout layout;
-	};
-	class GraphicsPipelineBuilder {
-	public:
-		Pipeline build(vk::Device device, vk::RenderPass pass, uint32_t subpass = 0, vk::PipelineCache pipelineCache = nullptr);
-
-		GraphicsPipelineBuilder &setViewport(const vk::Viewport &viewport);
-		GraphicsPipelineBuilder &setScissor(const vk::Rect2D &scissor);
-		GraphicsPipelineBuilder &setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput);
-		GraphicsPipelineBuilder &setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputassembly);
-		GraphicsPipelineBuilder &setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization);
-		GraphicsPipelineBuilder &setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling);
-		GraphicsPipelineBuilder &setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil);
-		GraphicsPipelineBuilder &setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend);
-		GraphicsPipelineBuilder &addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend);
-		GraphicsPipelineBuilder &addShaderStage(const vk::PipelineShaderStageCreateInfo &shaderStage);
-		GraphicsPipelineBuilder &addDynamicState(const vk::DynamicState &dynamicstates);
-		GraphicsPipelineBuilder &addPushConstants(const vk::PushConstantRange &pushconstants);
-		GraphicsPipelineBuilder &addDescriptorLayout(const vk::DescriptorSetLayout &layout);
-
-	private:
-		std::optional<vk::Viewport> viewport;
-		std::optional<vk::Rect2D> scissor;
-		std::optional<vk::PipelineVertexInputStateCreateInfo> vertexInput;
-		std::optional<vk::PipelineInputAssemblyStateCreateInfo> inputAssembly;
-		std::optional<vk::PipelineRasterizationStateCreateInfo> rasterization;
-		std::optional<vk::PipelineMultisampleStateCreateInfo> multisampling;
-		std::optional<vk::PipelineDepthStencilStateCreateInfo> depthStencil;
-		std::optional<vk::PipelineColorBlendStateCreateInfo> colorBlend;
-		std::vector<vk::PipelineColorBlendAttachmentState> colorAttachmentBlends;
-		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
-		std::vector<vk::DynamicState> dynamicStateEnable;
-		std::vector<vk::PushConstantRange> pushConstants;
-		std::vector<vk::DescriptorSetLayout> descLayouts;
-	};
-
-#if defined(VULKANHELPER_IMPLEMENTATION)
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setViewport(const vk::Viewport &viewport) {
-		this->viewport = viewport;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setScissor(const vk::Rect2D &scissor) {
-		this->scissor = scissor;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput) {
-		this->vertexInput = vertexInput;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputAssembly) {
-		this->inputAssembly = inputAssembly;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization) {
-		this->rasterization = rasterization;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling) {
-		this->multisampling = multisampling;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil) {
-		this->depthStencil = depthStencil;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend) {
-		this->colorBlend = colorBlend;
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend) {
-		this->colorAttachmentBlends.push_back(colorAttachmentBlend);
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addShaderStage(const vk::PipelineShaderStageCreateInfo &shaderStage) {
-		this->shaderStages.push_back(shaderStage);
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addDynamicState(const vk::DynamicState &dynamicstates) {
-		this->dynamicStateEnable.push_back(dynamicstates);
-		return *this;
-	}
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addPushConstants(const vk::PushConstantRange &pushconstant) {
-		this->pushConstants.push_back(pushconstant);
-		return *this;
-	}
-
-	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addDescriptorLayout(const vk::DescriptorSetLayout &layout) {
-		this->descLayouts.push_back(layout);
-		return *this;
-	}
-
-	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode) {
-		return vk::PipelineRasterizationStateCreateInfo{
-			.polygonMode = polygonMode,
-			.cullMode = vk::CullModeFlagBits::eNone,
-			.frontFace = vk::FrontFace::eClockwise,
-			.lineWidth = 1.0f,
-		};
-	}
-
-	vk::PipelineMultisampleStateCreateInfo makeDefaultMultisampleStateCreateInfo() {
-		return vk::PipelineMultisampleStateCreateInfo{.minSampleShading = 1.0f};
-	}
-
-	vk::PipelineColorBlendAttachmentState makeDefaultColorBlendSAttachmentState() {
-		return vk::PipelineColorBlendAttachmentState{
-			.blendEnable = VK_FALSE,
-			.colorWriteMask =
-				vk::ColorComponentFlagBits::eR |
-				vk::ColorComponentFlagBits::eG |
-				vk::ColorComponentFlagBits::eB |
-				vk::ColorComponentFlagBits::eA,
-		};
-	}
-
-	Pipeline GraphicsPipelineBuilder::build(vk::Device device, vk::RenderPass pass, uint32_t subpass, vk::PipelineCache pipelineCache) {
-		if (!vertexInput) {
-			std::cout << "error: vertexInput was not specified in pipeline builder!\n";
-			exit(-1);
-		}
-
-		// set state create infos:
-		vk::PipelineVertexInputStateCreateInfo pvertexInputCI = vertexInput.value();
-		vk::PipelineInputAssemblyStateCreateInfo pinputAssemlyStateCI = inputAssembly.value_or(vk::PipelineInputAssemblyStateCreateInfo{.topology = vk::PrimitiveTopology::eTriangleList});
-		vk::PipelineRasterizationStateCreateInfo prasterizationStateCI = rasterization.value_or(vkh::makeDefaultRasterisationStateCreateInfo(vk::PolygonMode::eFill));
-		vk::PipelineMultisampleStateCreateInfo multisamplerStateCI = multisampling.value_or(vkh::makeDefaultMultisampleStateCreateInfo());
-		vk::PipelineDepthStencilStateCreateInfo pDepthStencilStateCI = depthStencil.value_or(vk::PipelineDepthStencilStateCreateInfo{});
-		vk::Viewport pviewport = viewport.value_or(vk::Viewport{.width = 1, .height = 1});
-		vk::Rect2D pscissor = scissor.value_or(vk::Rect2D{.extent = {static_cast<uint32_t>(pviewport.width), static_cast<uint32_t>(pviewport.height)}});
-
-		Pipeline pipeline;
-
-		//build pipeline layout:
-		vk::PipelineLayoutCreateInfo layoutCI{
-			.setLayoutCount = static_cast<uint32_t>(descLayouts.size()),
-			.pSetLayouts = descLayouts.data(),
-			.pushConstantRangeCount = uint32_t(pushConstants.size()),
-			.pPushConstantRanges = pushConstants.data(),
-		};
-
-		pipeline.layout = device.createPipelineLayoutUnique(layoutCI);
-
-		vk::PipelineViewportStateCreateInfo viewportStateCI{
-			.viewportCount = 1,
-			.pViewports = &pviewport,
-			.scissorCount = 1,
-			.pScissors = &pscissor,
-		};
-
-		vk::PipelineColorBlendAttachmentState defaultColorBlendAttachmentStateCI = makeDefaultColorBlendSAttachmentState();
-		vk::PipelineColorBlendStateCreateInfo colorBlendingSCI;
-		if (this->colorBlend.has_value()) {
-			colorBlendingSCI = this->colorBlend.value();
-		} else if (this->colorAttachmentBlends.size() > 0) {
-			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
-				.logicOpEnable = VK_FALSE,
-				.logicOp = vk::LogicOp::eCopy,
-				.attachmentCount = static_cast<uint32_t>(this->colorAttachmentBlends.size()),
-				.pAttachments = this->colorAttachmentBlends.data(),
-			};
-		} else {
-			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
-				.logicOpEnable = VK_FALSE,
-				.logicOp = vk::LogicOp::eCopy,
-				.attachmentCount = 1,
-				.pAttachments = &defaultColorBlendAttachmentStateCI,
-			};
-		}
-
-		// dynamic state setup:
-		if (std::find(dynamicStateEnable.begin(), dynamicStateEnable.end(), vk::DynamicState::eViewport) == dynamicStateEnable.end()) {
-			dynamicStateEnable.push_back(vk::DynamicState::eViewport);
-		}
-		if (std::find(dynamicStateEnable.begin(), dynamicStateEnable.end(), vk::DynamicState::eScissor) == dynamicStateEnable.end()) {
-			dynamicStateEnable.push_back(vk::DynamicState::eScissor);
-		}
-
-		vk::PipelineDynamicStateCreateInfo dynamicStateCI{
-			.dynamicStateCount = (uint32_t)dynamicStateEnable.size(),
-			.pDynamicStates = dynamicStateEnable.data(),
-		};
-
-		//we now use all of the info structs we have been writing into into this one to create the pipeline
-		vk::GraphicsPipelineCreateInfo pipelineCI{
-			.stageCount = (uint32_t)shaderStages.size(),
-			.pStages = shaderStages.data(),
-			.pVertexInputState = &pvertexInputCI,
-			.pInputAssemblyState = &pinputAssemlyStateCI,
-			.pViewportState = &viewportStateCI,
-			.pRasterizationState = &prasterizationStateCI,
-			.pMultisampleState = &multisamplerStateCI,
-			.pDepthStencilState = &pDepthStencilStateCI,
-			.pColorBlendState = &colorBlendingSCI,
-			.pDynamicState = &dynamicStateCI,
-			.layout = pipeline.layout.get(),
-			.renderPass = pass,
-			.subpass = subpass,
-		};
-
-		auto ret = device.createGraphicsPipelineUnique(pipelineCache, pipelineCI);
-		if (ret.result != vk::Result::eSuccess) {
-			throw std::runtime_error("error: Failed to create graphics pipeline!");
-		}
-		pipeline.pipeline = std::move(ret.value);
-
-		return pipeline;
-	}
-#endif
-
-	std::optional<vk::UniqueShaderModule> loadShaderModule(vk::Device device, std::filesystem::path filePath);
-
-	vk::PipelineShaderStageCreateInfo makeShaderStageCreateInfo(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule);
-
-#if defined(VULKANHELPER_IMPLEMENTATION)
-	std::optional<vk::UniqueShaderModule> loadShaderModule(vk::Device device, std::filesystem::path filePath) {
-		std::ifstream file{filePath, std::ios::ate | std::ios::binary};
-
-		if (!file.is_open()) {
-			return {};
-		}
-
-		size_t fileSize = static_cast<size_t>(file.tellg());
-		std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
-		file.seekg(0);
-		file.read((char *)buffer.data(), fileSize);
-		file.close();
-
-		vk::ShaderModuleCreateInfo createInfo = {};
-
-		createInfo.codeSize = buffer.size() * sizeof(uint32_t);
-		createInfo.pCode = buffer.data();
-
-		vk::ShaderModule shaderModule;
-		return std::move(device.createShaderModuleUnique(createInfo));
-	}
-
-	vk::PipelineShaderStageCreateInfo makeShaderStageCreateInfo(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule) {
-		vk::PipelineShaderStageCreateInfo info{};
-
-		info.stage = stage;
-		info.module = shaderModule;
-		info.pName = "main";
-		return info;
-	}
-
-#endif
-
-	vk::FenceCreateInfo makeDefaultFenceCI();
-
-	vk::AttachmentDescription makeDefaultColorAttackmentDescription();
-
-#if defined(VULKANHELPER_IMPLEMENTATION)
-	vk::FenceCreateInfo makeDefaultFenceCI() {
-		vk::FenceCreateInfo info{};
-		info.flags |= vk::FenceCreateFlagBits::eSignaled;
-		return info;
-	}
-
-	vk::AttachmentDescription makeDefaultColorAttackmentDescription() {
-		return vk::AttachmentDescription{
-			.format = vk::Format::eUndefined,
-			.samples = vk::SampleCountFlagBits::e1,
-			.loadOp = vk::AttachmentLoadOp::eClear,
-			.storeOp = vk::AttachmentStoreOp::eStore,
-			.stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-			.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-			.initialLayout = vk::ImageLayout::eUndefined,
-			.finalLayout = vk::ImageLayout::ePresentSrcKHR,
-		};
-	}
-#endif
-
-	template <typename T>
-	class Pool {
-	public:
-		Pool() = default;
-		Pool(std::function<T(void)> creator, std::function<void(T)> destroyer, std::function<void(T)> resetter) : creator{std::move(creator)}, destroyer{std::move(destroyer)}, resetter{std::move(resetter)} {}
-
-		Pool(Pool &&other) {
-			this->creator = std::move(other.creator);
-			this->destroyer = std::move(other.destroyer);
-			this->resetter = std::move(other.resetter);
-			this->pool = std::move(other.pool);
-			this->usedList = std::move(other.usedList);
-		}
-
-		Pool &operator=(Pool &&other) {
-			if (&other == this)
-				return *this;
-			return *new (this) Pool(std::move(other));
-		}
-
-		~Pool() {
-			for (auto &el : pool) {
-				destroyer(el);
-			}
-			for (auto &el : usedList) {
-				destroyer(el);
-			}
-			pool.clear();
-		}
-
-		void flush() {
-			for (auto &el : usedList) {
-				resetter(el);
-			}
-			pool.insert(pool.end(), usedList.begin(), usedList.end());
-			usedList.clear();
-		}
-
-		T get() {
-			if (pool.size() == 0) {
-				pool.push_back(creator());
-			}
-
-			auto el = pool.back();
-			pool.pop_back();
-			usedList.push_back(el);
-			return el;
-		}
-
-	private:
-		std::function<T(void)> creator;
-		std::function<void(T)> destroyer;
-		std::function<void(T)> resetter;
-		std::vector<T> pool;
-		std::vector<T> usedList;
-	};
 
 	class DescriptorSetLayoutCache {
 	public:
@@ -780,6 +454,490 @@ namespace vkh {
 		return device.createDescriptorSetLayoutUnique(createInfo);
 	}
 #endif
+
+	std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>
+	reflectSetBindings(std::vector<uint32_t> spv, vk::ShaderStageFlagBits shaderStage);
+
+	std::vector<vk::DescriptorSetLayout> mergeReflectedSetBindings(
+		std::vector<std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>> setMaps,
+		vkh::DescriptorSetLayoutCache &layoutCache);
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+	std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>
+	reflectSetBindings(std::vector<uint32_t> spv, vk::ShaderStageFlagBits shaderStage) {
+		SpvReflectShaderModule module = {};
+		SpvReflectResult result = spvReflectCreateShaderModule(spv.size() * sizeof(uint32_t), spv.data(), &module);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+		uint32_t count = 0;
+		result = spvReflectEnumerateDescriptorSets(&module, &count, NULL);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+		std::vector<SpvReflectDescriptorSet *> sets(count);
+		result = spvReflectEnumerateDescriptorSets(&module, &count, sets.data());
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+		std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>> setMap;
+		for (auto *set : sets) {
+			std::vector<vk::DescriptorSetLayoutBinding> bindings;
+			for (uint32_t i = 0; i < set->binding_count; i++) {
+				auto *reflBinding = set->bindings[i];
+
+				vk::DescriptorSetLayoutBinding binding{
+					.binding = reflBinding->binding,
+					.descriptorType = static_cast<vk::DescriptorType>(reflBinding->descriptor_type),
+					.descriptorCount = reflBinding->count,
+					.stageFlags = shaderStage};
+				setMap[set->set][binding.binding] = binding;
+			}
+		}
+
+		spvReflectDestroyShaderModule(&module);
+		return std::move(setMap);
+	}
+
+	std::vector<vk::DescriptorSetLayout> mergeReflectedSetBindings(
+		std::vector<std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>> setMaps,
+		vkh::DescriptorSetLayoutCache &layoutCache) {
+		auto mainSetMap = std::move(setMaps.back());
+		setMaps.pop_back();
+
+		for (auto &setMap : setMaps) {
+			for (auto &[set, bindingMap] : setMap) {
+				if (!mainSetMap.contains(set)) {
+					mainSetMap[set] = bindingMap;
+				} else {
+					for (auto &[bindingIndex, binding] : bindingMap) {
+						if (!mainSetMap[set].contains(bindingIndex)) {
+							mainSetMap[set][bindingIndex] = binding;
+						} else {
+							mainSetMap[set][bindingIndex].stageFlags |= binding.stageFlags;
+						}
+					}
+				}
+			}
+		}
+
+		std::vector<vk::DescriptorSetLayout> layouts;
+		std::vector<vk::DescriptorSetLayoutBinding> bindings;
+		for (auto &[set, bindingMap] : mainSetMap) {
+			bindings.clear();
+			for (auto &[bindingIndex, binding] : bindingMap) {
+				bindings.push_back(binding);
+			}
+			layouts.push_back(layoutCache.getLayout(bindings));
+		}
+		return layouts;
+	}
+
+#endif // #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+#endif // #if defined(VULKANHELPER_IMPLEMENTATION)
+
+	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode);
+
+	vk::PipelineMultisampleStateCreateInfo makeDefaultMultisampleStateCreateInfo();
+
+	vk::PipelineColorBlendAttachmentState makeDefaultColorBlendSAttachmentState();
+
+	struct Pipeline {
+		vk::UniquePipeline pipeline;
+		vk::UniquePipelineLayout layout;
+	};
+	class GraphicsPipelineBuilder {
+	public:
+		GraphicsPipelineBuilder(vk::Device device, vk::RenderPass pass, vk::PipelineCache pipelineCache = nullptr);
+		Pipeline build();
+
+		GraphicsPipelineBuilder &setSubPass(uint32_t index);
+		GraphicsPipelineBuilder &setViewport(const vk::Viewport &viewport);
+		GraphicsPipelineBuilder &setScissor(const vk::Rect2D &scissor);
+		GraphicsPipelineBuilder &setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput);
+		GraphicsPipelineBuilder &setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputassembly);
+		GraphicsPipelineBuilder &setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization);
+		GraphicsPipelineBuilder &setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling);
+		GraphicsPipelineBuilder &setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil);
+		GraphicsPipelineBuilder &setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend);
+		GraphicsPipelineBuilder &addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend);
+		GraphicsPipelineBuilder &addShaderStage(
+			const std::vector<uint32_t> *spv,
+			vk::ShaderStageFlagBits shaderStage,
+			vk::PipelineShaderStageCreateFlags flags = {},
+			vk::SpecializationInfo *pSpecializationInfo = {});
+		GraphicsPipelineBuilder &addDynamicState(const vk::DynamicState &dynamicstates);
+		GraphicsPipelineBuilder &addPushConstants(const vk::PushConstantRange &pushconstants);
+		GraphicsPipelineBuilder &addDescriptorLayout(const vk::DescriptorSetLayout &layout);
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+		GraphicsPipelineBuilder &reflectSPVForDescriptors(DescriptorSetLayoutCache &layoutCache);
+#endif // VULKANHELPER_USE_SPIRV_REFLECT
+
+	private:
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+		std::vector<std::pair<vk::ShaderStageFlagBits, const std::vector<uint32_t> *>> spvs;
+#endif // VULKANHELPER_USE_SPIRV_REFLECT
+		vk::Device device;
+		vk::RenderPass renderPass;
+		uint32_t subPass;
+		vk::PipelineCache pipelineCache;
+		std::optional<vk::Viewport> viewport;
+		std::optional<vk::Rect2D> scissor;
+		std::optional<vk::PipelineVertexInputStateCreateInfo> vertexInput;
+		std::optional<vk::PipelineInputAssemblyStateCreateInfo> inputAssembly;
+		std::optional<vk::PipelineRasterizationStateCreateInfo> rasterization;
+		std::optional<vk::PipelineMultisampleStateCreateInfo> multisampling;
+		std::optional<vk::PipelineDepthStencilStateCreateInfo> depthStencil;
+		std::optional<vk::PipelineColorBlendStateCreateInfo> colorBlend;
+		std::vector<vk::PipelineColorBlendAttachmentState> colorAttachmentBlends;
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+		std::vector<vk::DynamicState> dynamicStateEnable;
+		std::vector<vk::PushConstantRange> pushConstants;
+		std::vector<vk::DescriptorSetLayout> descLayouts;
+
+		std::vector<vk::UniqueShaderModule> shaderModules;
+	};
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::reflectSPVForDescriptors(DescriptorSetLayoutCache &layoutCache) {
+		std::vector<std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>> setMaps;
+
+		if (this->descLayouts.size() > 0) {
+			std::cerr << "vulkan helper warning: there are diescriptor set layouts set brefore reflectSPVForDescriptors. All descriptor set layouts will be replaced by reflectSPVForDescriptors!\n";
+		}
+
+		for (auto [stage, spvPtr] : spvs) {
+			setMaps.push_back(reflectSetBindings(*spvPtr, stage));
+		}
+		this->descLayouts = mergeReflectedSetBindings(setMaps, layoutCache);
+
+		const std::vector<uint32_t> *vertexShaderSPV{nullptr};
+		for (auto [stage, spvPtr] : spvs) {
+			if (stage == vk::ShaderStageFlagBits::eVertex) {
+				vertexShaderSPV = spvPtr;
+				break;
+			}
+		}
+
+		if (vertexShaderSPV) {
+		}
+
+		return *this;
+	}
+#endif // VULKANHELPER_USE_SPIRV_REFLECT
+
+	GraphicsPipelineBuilder::GraphicsPipelineBuilder(vk::Device device, vk::RenderPass pass, vk::PipelineCache pipelineCache)
+		: device{device}, renderPass{pass}, pipelineCache{pipelineCache} {
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setSubPass(uint32_t index) {
+		this->subPass = index;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setViewport(const vk::Viewport &viewport) {
+		this->viewport = viewport;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setScissor(const vk::Rect2D &scissor) {
+		this->scissor = scissor;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setVertexInput(const vk::PipelineVertexInputStateCreateInfo &vertexInput) {
+		this->vertexInput = vertexInput;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setInputAssembly(const vk::PipelineInputAssemblyStateCreateInfo &inputAssembly) {
+		this->inputAssembly = inputAssembly;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setRasterization(const vk::PipelineRasterizationStateCreateInfo &rasterization) {
+		this->rasterization = rasterization;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setMultisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling) {
+		this->multisampling = multisampling;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setDepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil) {
+		this->depthStencil = depthStencil;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlend) {
+		this->colorBlend = colorBlend;
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addColorBlendAttachemnt(const vk::PipelineColorBlendAttachmentState &colorAttachmentBlend) {
+		this->colorAttachmentBlends.push_back(colorAttachmentBlend);
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addShaderStage(
+		const std::vector<uint32_t> *spv,
+		vk::ShaderStageFlagBits shaderStage,
+		vk::PipelineShaderStageCreateFlags flags,
+		vk::SpecializationInfo *pSpecializationInfo) {
+		vk::ShaderModuleCreateInfo moduleCreateInfo{
+			.codeSize = static_cast<uint32_t>(spv->size()) * sizeof(uint32_t),
+			.pCode = spv->data()};
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+		this->spvs.emplace_back(shaderStage, spv);
+#endif // VULKANHELPER_USE_SPIRV_REFLECT
+		this->shaderModules.push_back(device.createShaderModuleUnique(moduleCreateInfo));
+		vk::PipelineShaderStageCreateInfo pipelineStageCI{
+			.stage = shaderStage,
+			.module = this->shaderModules.back().get(),
+			.pName = "main"};
+		this->shaderStages.push_back(pipelineStageCI);
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addDynamicState(const vk::DynamicState &dynamicstates) {
+		this->dynamicStateEnable.push_back(dynamicstates);
+		return *this;
+	}
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addPushConstants(const vk::PushConstantRange &pushconstant) {
+		this->pushConstants.push_back(pushconstant);
+		return *this;
+	}
+
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addDescriptorLayout(const vk::DescriptorSetLayout &layout) {
+		this->descLayouts.push_back(layout);
+		return *this;
+	}
+
+	vk::PipelineRasterizationStateCreateInfo makeDefaultRasterisationStateCreateInfo(vk::PolygonMode polygonMode) {
+		return vk::PipelineRasterizationStateCreateInfo{
+			.polygonMode = polygonMode,
+			.cullMode = vk::CullModeFlagBits::eNone,
+			.frontFace = vk::FrontFace::eClockwise,
+			.lineWidth = 1.0f,
+		};
+	}
+
+	vk::PipelineMultisampleStateCreateInfo makeDefaultMultisampleStateCreateInfo() {
+		return vk::PipelineMultisampleStateCreateInfo{.minSampleShading = 1.0f};
+	}
+
+	vk::PipelineColorBlendAttachmentState makeDefaultColorBlendSAttachmentState() {
+		return vk::PipelineColorBlendAttachmentState{
+			.blendEnable = VK_FALSE,
+			.colorWriteMask =
+				vk::ColorComponentFlagBits::eR |
+				vk::ColorComponentFlagBits::eG |
+				vk::ColorComponentFlagBits::eB |
+				vk::ColorComponentFlagBits::eA,
+		};
+	}
+
+	Pipeline GraphicsPipelineBuilder::build() {
+		if (!vertexInput) {
+			std::cout << "error: vertexInput was not specified in pipeline builder!\n";
+			exit(-1);
+		}
+
+		// set state create infos:
+		vk::PipelineVertexInputStateCreateInfo pvertexInputCI = vertexInput.value();
+		vk::PipelineInputAssemblyStateCreateInfo pinputAssemlyStateCI = inputAssembly.value_or(vk::PipelineInputAssemblyStateCreateInfo{.topology = vk::PrimitiveTopology::eTriangleList});
+		vk::PipelineRasterizationStateCreateInfo prasterizationStateCI = rasterization.value_or(vkh::makeDefaultRasterisationStateCreateInfo(vk::PolygonMode::eFill));
+		vk::PipelineMultisampleStateCreateInfo multisamplerStateCI = multisampling.value_or(vkh::makeDefaultMultisampleStateCreateInfo());
+		vk::PipelineDepthStencilStateCreateInfo pDepthStencilStateCI = depthStencil.value_or(vk::PipelineDepthStencilStateCreateInfo{});
+		vk::Viewport pviewport = viewport.value_or(vk::Viewport{.width = 1, .height = 1});
+		vk::Rect2D pscissor = scissor.value_or(vk::Rect2D{.extent = {static_cast<uint32_t>(pviewport.width), static_cast<uint32_t>(pviewport.height)}});
+
+		Pipeline pipeline;
+
+		//build pipeline layout:
+		vk::PipelineLayoutCreateInfo layoutCI{
+			.setLayoutCount = static_cast<uint32_t>(descLayouts.size()),
+			.pSetLayouts = descLayouts.data(),
+			.pushConstantRangeCount = uint32_t(pushConstants.size()),
+			.pPushConstantRanges = pushConstants.data(),
+		};
+
+		pipeline.layout = device.createPipelineLayoutUnique(layoutCI);
+
+		vk::PipelineViewportStateCreateInfo viewportStateCI{
+			.viewportCount = 1,
+			.pViewports = &pviewport,
+			.scissorCount = 1,
+			.pScissors = &pscissor,
+		};
+
+		vk::PipelineColorBlendAttachmentState defaultColorBlendAttachmentStateCI = makeDefaultColorBlendSAttachmentState();
+		vk::PipelineColorBlendStateCreateInfo colorBlendingSCI;
+		if (this->colorBlend.has_value()) {
+			colorBlendingSCI = this->colorBlend.value();
+		} else if (this->colorAttachmentBlends.size() > 0) {
+			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
+				.logicOpEnable = VK_FALSE,
+				.logicOp = vk::LogicOp::eCopy,
+				.attachmentCount = static_cast<uint32_t>(this->colorAttachmentBlends.size()),
+				.pAttachments = this->colorAttachmentBlends.data(),
+			};
+		} else {
+			colorBlendingSCI = vk::PipelineColorBlendStateCreateInfo{
+				.logicOpEnable = VK_FALSE,
+				.logicOp = vk::LogicOp::eCopy,
+				.attachmentCount = 1,
+				.pAttachments = &defaultColorBlendAttachmentStateCI,
+			};
+		}
+
+		// dynamic state setup:
+		if (std::find(dynamicStateEnable.begin(), dynamicStateEnable.end(), vk::DynamicState::eViewport) == dynamicStateEnable.end()) {
+			dynamicStateEnable.push_back(vk::DynamicState::eViewport);
+		}
+		if (std::find(dynamicStateEnable.begin(), dynamicStateEnable.end(), vk::DynamicState::eScissor) == dynamicStateEnable.end()) {
+			dynamicStateEnable.push_back(vk::DynamicState::eScissor);
+		}
+
+		vk::PipelineDynamicStateCreateInfo dynamicStateCI{
+			.dynamicStateCount = (uint32_t)dynamicStateEnable.size(),
+			.pDynamicStates = dynamicStateEnable.data(),
+		};
+
+		//we now use all of the info structs we have been writing into into this one to create the pipeline
+		vk::GraphicsPipelineCreateInfo pipelineCI{
+			.stageCount = (uint32_t)shaderStages.size(),
+			.pStages = shaderStages.data(),
+			.pVertexInputState = &pvertexInputCI,
+			.pInputAssemblyState = &pinputAssemlyStateCI,
+			.pViewportState = &viewportStateCI,
+			.pRasterizationState = &prasterizationStateCI,
+			.pMultisampleState = &multisamplerStateCI,
+			.pDepthStencilState = &pDepthStencilStateCI,
+			.pColorBlendState = &colorBlendingSCI,
+			.pDynamicState = &dynamicStateCI,
+			.layout = pipeline.layout.get(),
+			.renderPass = renderPass,
+			.subpass = subPass,
+		};
+
+		auto ret = device.createGraphicsPipelineUnique(pipelineCache, pipelineCI);
+		if (ret.result != vk::Result::eSuccess) {
+			throw std::runtime_error("error: Failed to create graphics pipeline!");
+		}
+		pipeline.pipeline = std::move(ret.value);
+
+		return pipeline;
+	}
+#endif
+
+	std::optional<vk::UniqueShaderModule> loadShaderModule(vk::Device device, std::filesystem::path filePath);
+
+	vk::PipelineShaderStageCreateInfo makeShaderStageCreateInfo(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule);
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	std::optional<vk::UniqueShaderModule> loadShaderModule(vk::Device device, std::filesystem::path filePath) {
+		std::ifstream file{filePath, std::ios::ate | std::ios::binary};
+
+		if (!file.is_open()) {
+			return {};
+		}
+
+		size_t fileSize = static_cast<size_t>(file.tellg());
+		std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
+		file.seekg(0);
+		file.read((char *)buffer.data(), fileSize);
+		file.close();
+
+		vk::ShaderModuleCreateInfo createInfo = {};
+
+		createInfo.codeSize = buffer.size() * sizeof(uint32_t);
+		createInfo.pCode = buffer.data();
+
+		vk::ShaderModule shaderModule;
+		return std::move(device.createShaderModuleUnique(createInfo));
+	}
+
+	vk::PipelineShaderStageCreateInfo makeShaderStageCreateInfo(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule) {
+		vk::PipelineShaderStageCreateInfo info{};
+
+		info.stage = stage;
+		info.module = shaderModule;
+		info.pName = "main";
+		return info;
+	}
+
+#endif
+
+	vk::FenceCreateInfo makeDefaultFenceCI();
+
+	vk::AttachmentDescription makeDefaultColorAttackmentDescription();
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	vk::FenceCreateInfo makeDefaultFenceCI() {
+		vk::FenceCreateInfo info{};
+		info.flags |= vk::FenceCreateFlagBits::eSignaled;
+		return info;
+	}
+
+	vk::AttachmentDescription makeDefaultColorAttackmentDescription() {
+		return vk::AttachmentDescription{
+			.format = vk::Format::eUndefined,
+			.samples = vk::SampleCountFlagBits::e1,
+			.loadOp = vk::AttachmentLoadOp::eClear,
+			.storeOp = vk::AttachmentStoreOp::eStore,
+			.stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+			.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+			.initialLayout = vk::ImageLayout::eUndefined,
+			.finalLayout = vk::ImageLayout::ePresentSrcKHR,
+		};
+	}
+#endif
+
+	template <typename T>
+	class Pool {
+	public:
+		Pool() = default;
+		Pool(std::function<T(void)> creator, std::function<void(T)> destroyer, std::function<void(T)> resetter) : creator{std::move(creator)}, destroyer{std::move(destroyer)}, resetter{std::move(resetter)} {}
+
+		Pool(Pool &&other) {
+			this->creator = std::move(other.creator);
+			this->destroyer = std::move(other.destroyer);
+			this->resetter = std::move(other.resetter);
+			this->pool = std::move(other.pool);
+			this->usedList = std::move(other.usedList);
+		}
+
+		Pool &operator=(Pool &&other) {
+			if (&other == this)
+				return *this;
+			return *new (this) Pool(std::move(other));
+		}
+
+		~Pool() {
+			for (auto &el : pool) {
+				destroyer(el);
+			}
+			for (auto &el : usedList) {
+				destroyer(el);
+			}
+			pool.clear();
+		}
+
+		void flush() {
+			for (auto &el : usedList) {
+				resetter(el);
+			}
+			pool.insert(pool.end(), usedList.begin(), usedList.end());
+			usedList.clear();
+		}
+
+		T get() {
+			if (pool.size() == 0) {
+				pool.push_back(creator());
+			}
+
+			auto el = pool.back();
+			pool.pop_back();
+			usedList.push_back(el);
+			return el;
+		}
+
+	private:
+		std::function<T(void)> creator;
+		std::function<void(T)> destroyer;
+		std::function<void(T)> resetter;
+		std::vector<T> pool;
+		std::vector<T> usedList;
+	};
 
 	class CommandBufferAllocator {
 	public:
