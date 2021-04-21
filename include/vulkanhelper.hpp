@@ -459,9 +459,9 @@ namespace vkh {
 		std::vector<T> usedList;
 	};
 
-	class DescriptorLayoutCache {
+	class DescriptorSetLayoutCache {
 	public:
-		DescriptorLayoutCache(vk::Device device);
+		DescriptorSetLayoutCache(vk::Device device);
 		vk::DescriptorSetLayout getLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings);
 
 	private:
@@ -474,11 +474,11 @@ namespace vkh {
 	};
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
-	DescriptorLayoutCache::DescriptorLayoutCache(vk::Device device)
+	DescriptorSetLayoutCache::DescriptorSetLayoutCache(vk::Device device)
 		: device{device} {
 	}
 
-	vk::DescriptorSetLayout DescriptorLayoutCache::getLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings) {
+	vk::DescriptorSetLayout DescriptorSetLayoutCache::getLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings) {
 		auto iter = bindingsToLayout.find(bindings);
 		if (iter != bindingsToLayout.end()) {
 			return *iter->second;
@@ -490,7 +490,7 @@ namespace vkh {
 			return *(bindingsToLayout[bindings] = device.createDescriptorSetLayoutUnique(allocateInfo));
 		}
 	}
-	std::size_t DescriptorLayoutCache::DescriptorLayoutHash::operator()(const std::vector<vk::DescriptorSetLayoutBinding> &bindings) const {
+	std::size_t DescriptorSetLayoutCache::DescriptorLayoutHash::operator()(const std::vector<vk::DescriptorSetLayoutBinding> &bindings) const {
 		size_t h{0};
 		for (const auto &binding : bindings) {
 			h ^= static_cast<size_t>(binding.descriptorType);
@@ -508,6 +508,8 @@ namespace vkh {
 		vk::DescriptorSet allocate(vk::DescriptorSetLayout layout);
 		std::vector<vk::DescriptorSet> allocate(vk::DescriptorSetLayout layout, uint32_t count);
 
+		const vk::Device device;
+
 	protected:
 		DescriptorAllocator(vk::Device device, vk::DescriptorPoolCreateFlagBits poolFlags, uint32_t maxSetsPerPool);
 
@@ -517,7 +519,6 @@ namespace vkh {
 		const vk::DescriptorPoolCreateFlagBits poolCreateFlags;
 		const uint32_t maxSetsPerPool;
 
-		vk::Device device;
 		vk::UniqueDescriptorPool currentPool;
 		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes;
 		std::vector<vk::UniqueDescriptorPool> usedPools;
@@ -678,17 +679,107 @@ namespace vkh {
 	}
 #endif
 
-	vk::DescriptorSet createDescriptorSet(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, DescriptorAllocator &alloc, DescriptorLayoutCache &layoutCache);
+	vk::DescriptorSet createDescriptorSet(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, DescriptorAllocator &alloc, DescriptorSetLayoutCache &layoutCache);
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
-	vk::DescriptorSet createDescriptorSet(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, DescriptorAllocator &alloc, DescriptorLayoutCache &layoutCache) {
+	vk::DescriptorSet createDescriptorSet(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, DescriptorAllocator &alloc, DescriptorSetLayoutCache &layoutCache) {
 		return alloc.allocate(layoutCache.getLayout(bindings));
 	}
 #endif
 
-	// TODO ADD DESCRIPTOR SET BUILDER THAT DIRECTLY LINKS THE DESCRIPTORS
+	class DescriptorSetBuilder {
+	public:
+		DescriptorSetBuilder(DescriptorAllocator *alloc, DescriptorSetLayoutCache *layoutCache);
+		DescriptorSetBuilder(DescriptorAllocator *alloc, vk::DescriptorSetLayout setLayout);
 
-	// TODO ADD EASY TO USE DESCRIPTOR BINDING UPDATE FUNCTION
+		DescriptorSetBuilder &addBufferBinding(const vk::DescriptorSetLayoutBinding &binding, const vk::DescriptorBufferInfo &bufferInfo);
+		DescriptorSetBuilder &addImageBinding(const vk::DescriptorSetLayoutBinding &binding, const vk::DescriptorImageInfo &imageInfo);
+		vk::DescriptorSet build();
+
+	private:
+		DescriptorAllocator *alloc;
+		DescriptorSetLayoutCache *layoutCache;
+		vk::DescriptorSetLayout setLayout;
+
+		std::vector<std::pair<vk::DescriptorSetLayoutBinding, vk::DescriptorBufferInfo>> bufferBindings;
+		std::vector<std::pair<vk::DescriptorSetLayoutBinding, vk::DescriptorImageInfo>> imageBindings;
+	};
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	DescriptorSetBuilder::DescriptorSetBuilder(DescriptorAllocator *alloc, DescriptorSetLayoutCache *layoutCache)
+		: alloc{alloc}, layoutCache{layoutCache} {
+	}
+	DescriptorSetBuilder::DescriptorSetBuilder(DescriptorAllocator *alloc, vk::DescriptorSetLayout setLayout)
+		: alloc{alloc}, setLayout{setLayout} {
+	}
+
+	DescriptorSetBuilder &DescriptorSetBuilder::addBufferBinding(const vk::DescriptorSetLayoutBinding &binding, const vk::DescriptorBufferInfo &bufferInfo) {
+		bufferBindings.emplace_back(binding, bufferInfo);
+		return *this;
+	}
+	DescriptorSetBuilder &DescriptorSetBuilder::addImageBinding(const vk::DescriptorSetLayoutBinding &binding, const vk::DescriptorImageInfo &imageInfo) {
+		imageBindings.emplace_back(binding, imageInfo);
+		return *this;
+	}
+	vk::DescriptorSet DescriptorSetBuilder::build() {
+		if (!setLayout) {
+			std::vector<vk::DescriptorSetLayoutBinding> bindings;
+			bindings.reserve(bufferBindings.size() + imageBindings.size());
+			for (auto &[binding, bufferInfo] : bufferBindings) {
+				bindings.emplace_back(binding);
+			}
+			for (auto &[binding, imageInfo] : imageBindings) {
+				bindings.emplace_back(binding);
+			}
+			setLayout = layoutCache->getLayout(bindings);
+		}
+
+		vk::DescriptorSet set = alloc->allocate(setLayout);
+
+		std::vector<vk::WriteDescriptorSet> writes;
+		writes.reserve(bufferBindings.size() + imageBindings.size());
+		for (auto &[binding, bufferInfo] : bufferBindings) {
+			writes.push_back(
+				vk::WriteDescriptorSet{
+					.dstSet = set,
+					.dstBinding = binding.binding,
+					.descriptorCount = binding.descriptorCount,
+					.descriptorType = binding.descriptorType,
+					.pBufferInfo = &bufferInfo});
+		}
+		for (auto &[binding, imageInfo] : imageBindings) {
+			writes.push_back(
+				vk::WriteDescriptorSet{
+					.dstSet = set,
+					.dstBinding = binding.binding,
+					.descriptorCount = binding.descriptorCount,
+					.descriptorType = binding.descriptorType,
+					.pImageInfo = &imageInfo});
+		}
+
+		alloc->device.updateDescriptorSets(writes, {});
+		return set;
+	}
+#endif
+
+	vk::DescriptorSetLayout createDescriptorLayout(vk::Device device, std::vector<vk::DescriptorSetLayoutBinding> binding);
+	vk::UniqueDescriptorSetLayout createDescriptorLayoutUnique(vk::Device device, std::vector<vk::DescriptorSetLayoutBinding> binding);
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
+	vk::DescriptorSetLayout createDescriptorLayout(vk::Device device, std::vector<vk::DescriptorSetLayoutBinding> binding) {
+		vk::DescriptorSetLayoutCreateInfo createInfo{
+			.bindingCount = static_cast<uint32_t>(binding.size()),
+			.pBindings = binding.data()};
+		return device.createDescriptorSetLayout(createInfo);
+	}
+
+	vk::UniqueDescriptorSetLayout createDescriptorLayoutUnique(vk::Device device, std::vector<vk::DescriptorSetLayoutBinding> binding) {
+		vk::DescriptorSetLayoutCreateInfo createInfo{
+			.bindingCount = static_cast<uint32_t>(binding.size()),
+			.pBindings = binding.data()};
+		return device.createDescriptorSetLayoutUnique(createInfo);
+	}
+#endif
 
 	class CommandBufferAllocator {
 	public:
