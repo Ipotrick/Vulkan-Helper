@@ -567,6 +567,7 @@ namespace vkh {
 		GraphicsPipelineBuilder &addDynamicState(const vk::DynamicState &dynamicstates);
 		GraphicsPipelineBuilder &addPushConstants(const vk::PushConstantRange &pushconstants);
 		GraphicsPipelineBuilder &addDescriptorLayout(const vk::DescriptorSetLayout &layout);
+		GraphicsPipelineBuilder &setDescriptorLayout(const std::vector<vk::DescriptorSetLayout> &layouts);
 #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
 		GraphicsPipelineBuilder &reflectSPVForDescriptors(DescriptorSetLayoutCache &layoutCache);
 #endif // VULKANHELPER_USE_SPIRV_REFLECT
@@ -698,6 +699,11 @@ namespace vkh {
 
 	GraphicsPipelineBuilder &GraphicsPipelineBuilder::addDescriptorLayout(const vk::DescriptorSetLayout &layout) {
 		this->descLayouts.push_back(layout);
+		return *this;
+	}
+
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::setDescriptorLayout(const std::vector<vk::DescriptorSetLayout> &layouts) {
+		this->descLayouts = layouts;
 		return *this;
 	}
 
