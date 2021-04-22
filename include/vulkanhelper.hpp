@@ -36,6 +36,9 @@
 #endif
 
 namespace vkh {
+    std::size_t sizeofFormat(vk::Format format);
+
+#if defined(VULKANHELPER_IMPLEMENTATION)
     std::size_t sizeofFormat(vk::Format format) {
         if (format == vk::Format::eUndefined)
             return -1;
@@ -85,6 +88,7 @@ namespace vkh {
             return 8;
         return -1;
     }
+#endif
 
 	struct VertexDescription {
 		std::vector<vk::VertexInputBindingDescription> bindings;
