@@ -610,13 +610,18 @@ namespace vkh {
 			const std::vector<uint32_t> *spv,
 			vk::PipelineShaderStageCreateFlags flags = {},
 			vk::SpecializationInfo *pSpecializationInfo = {});
-		ComputePipelineBuilder &addDynamicState(const vk::DynamicState &dynamicstates);
 		ComputePipelineBuilder &addPushConstants(const vk::PushConstantRange &pushconstants);
 		ComputePipelineBuilder &setDescriptorLayouts(const std::vector<vk::DescriptorSetLayout> &layouts);
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+		ComputePipelineBuilder &reflectSPVForDescriptors(DescriptorSetLayoutCache &layoutCache);
+#endif
 
 	private:
 		vk::Device device;
 		vk::PipelineCache pipelineCache;
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+		const std::vector<uint32_t> *spv;
+#endif
 		vk::PipelineShaderStageCreateInfo shaderStage;
 		std::vector<vk::PushConstantRange> pushConstants;
 		std::vector<vk::DescriptorSetLayout> descLayouts;
@@ -637,17 +642,6 @@ namespace vkh {
 			setMaps.push_back(reflectSetBindings(*spvPtr, stage));
 		}
 		this->descLayouts = mergeReflectedSetBindings(setMaps, layoutCache);
-
-		const std::vector<uint32_t> *vertexShaderSPV{nullptr};
-		for (auto [stage, spvPtr] : spvs) {
-			if (stage == vk::ShaderStageFlagBits::eVertex) {
-				vertexShaderSPV = spvPtr;
-				break;
-			}
-		}
-
-		if (vertexShaderSPV) {
-		}
 
 		return *this;
 	}
@@ -853,6 +847,9 @@ namespace vkh {
 		const std::vector<uint32_t> *spv,
 		vk::PipelineShaderStageCreateFlags flags,
 		vk::SpecializationInfo *pSpecializationInfo) {
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+		this->spv = spv;
+#endif
 		vk::ShaderModuleCreateInfo moduleCreateInfo{
 			.codeSize = static_cast<uint32_t>(spv->size()) * sizeof(uint32_t),
 			.pCode = spv->data()};
@@ -873,6 +870,23 @@ namespace vkh {
 		this->descLayouts = layouts;
 		return *this;
 	}
+
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+	ComputePipelineBuilder& ComputePipelineBuilder::reflectSPVForDescriptors(DescriptorSetLayoutCache& layoutCache) {
+
+		if (this->descLayouts.size() > 0) {
+			std::cerr << "vulkan helper warning: there are diescriptor set layouts set brefore reflectSPVForDescriptors. All descriptor set layouts will be replaced by reflectSPVForDescriptors!\n";
+		}
+
+		auto setMap = reflectSetBindings(*spv, vk::ShaderStageFlagBits::eCompute);
+		std::vector vec{setMap};
+		this->descLayouts = mergeReflectedSetBindings(vec, layoutCache);
+
+		const std::vector<uint32_t> *vertexShaderSPV{nullptr};
+
+		return *this;
+	}
+#endif // #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
 
 	Pipeline ComputePipelineBuilder::build() {
 		Pipeline pipeline;
