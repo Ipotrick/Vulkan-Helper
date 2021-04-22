@@ -7,6 +7,6 @@ find_package(fmt CONFIG REQUIRED)
 project(${PROJECT_NAME}_compute)
 
 add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt glm::glm glslang::HLSL glslang::SPIRV glslang::glslang glslang::OGLCompiler Vulkan-Helper)
-# This would be done automatically if you linked against the vcpkg version
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt glm::glm glslang::SPIRV Vulkan-Helper)
+# This would be done automatically if one linked against the vcpkg version
 target_include_directories(${PROJECT_NAME} PRIVATE "../../include")

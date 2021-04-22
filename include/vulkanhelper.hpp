@@ -583,7 +583,7 @@ namespace vkh {
 #endif // VULKANHELPER_USE_SPIRV_REFLECT
 		vk::Device device;
 		vk::RenderPass renderPass;
-		uint32_t subPass;
+		uint32_t subPass = 0;
 		vk::PipelineCache pipelineCache;
 		std::optional<vk::Viewport> viewport;
 		std::optional<vk::Rect2D> scissor;

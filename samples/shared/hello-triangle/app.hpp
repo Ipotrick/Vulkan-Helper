@@ -170,9 +170,6 @@ std::pair<vk::Pipeline, vk::PipelineLayout> createGraphicsPipeline(vk::Device lo
 	auto vert_spv = loadGlslShaderToSpv("samples/shared/hello-triangle/main.vert");
 	auto frag_spv = loadGlslShaderToSpv("samples/shared/hello-triangle/main.frag");
 	glslang::FinalizeProcess();
-	auto vert_shader_module = logical_device.createShaderModuleUnique({.codeSize = vert_spv.size() * sizeof(vert_spv[0]), .pCode = vert_spv.data()});
-	auto frag_shader_module = logical_device.createShaderModuleUnique({.codeSize = frag_spv.size() * sizeof(frag_spv[0]), .pCode = frag_spv.data()});
-
 	vkh::VertexDiscriptionBuilder vertBuilder;
 	auto vertDesc = vertBuilder
 						.beginBinding((std::uint32_t)vertexSize)
@@ -180,12 +177,12 @@ std::pair<vk::Pipeline, vk::PipelineLayout> createGraphicsPipeline(vk::Device lo
 						.addAttribute(vk::Format::eR32G32B32A32Sfloat)
 						.build();
 
-	vkh::GraphicsPipelineBuilder pipelineBuilder;
+	vkh::GraphicsPipelineBuilder pipelineBuilder(logical_device, renderpass);
 	pipelineBuilder
 		.setVertexInput(vertDesc.makePipelineVertexInputStateCreateInfo())
-		.addShaderStage({.stage = vk::ShaderStageFlagBits::eVertex, .module = *vert_shader_module, .pName = "main"})
-		.addShaderStage({.stage = vk::ShaderStageFlagBits::eFragment, .module = *frag_shader_module, .pName = "main"});
-	vkh::Pipeline pipe = pipelineBuilder.build(logical_device, renderpass);
+		.addShaderStage(&vert_spv, vk::ShaderStageFlagBits::eVertex)
+		.addShaderStage(&frag_spv, vk::ShaderStageFlagBits::eFragment);
+	vkh::Pipeline pipe = pipelineBuilder.build();
 	return std::make_pair(pipe.pipeline.release(), pipe.layout.release());
 }
 
@@ -247,9 +244,9 @@ struct HelloTriangle {
 	};
 	TriangleVertex vertexData[3]{
 		// clang-format off
-        {.pos = { 0.5f,  0.5f}, .col = {1, 0, 0, 1}}, // bottom right (red)
-        {.pos = {-0.5f,  0.5f}, .col = {0, 1, 0, 1}}, // bottom left  (green)
-        {.pos = { 0.0f, -0.5f}, .col = {0, 0, 1, 1}}, // top middle   (blue)
+		{.pos = { 0.5f,  0.5f}, .col = {1, 0, 0, 1}}, // bottom right (red)
+		{.pos = {-0.5f,  0.5f}, .col = {0, 1, 0, 1}}, // bottom left  (green)
+		{.pos = { 0.0f, -0.5f}, .col = {0, 0, 1, 1}}, // top middle   (blue)
 		// clang-format on
 	};
 
