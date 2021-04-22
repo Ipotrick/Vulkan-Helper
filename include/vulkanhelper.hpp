@@ -601,6 +601,28 @@ namespace vkh {
 
 		std::vector<vk::UniqueShaderModule> shaderModules;
 	};
+	class ComputePipelineBuilder {
+	public:
+		ComputePipelineBuilder(vk::Device device, vk::PipelineCache pipelineCache = nullptr);
+		Pipeline build();
+
+		ComputePipelineBuilder &setShaderStage(
+			const std::vector<uint32_t> *spv,
+			vk::PipelineShaderStageCreateFlags flags = {},
+			vk::SpecializationInfo *pSpecializationInfo = {});
+		ComputePipelineBuilder &addDynamicState(const vk::DynamicState &dynamicstates);
+		ComputePipelineBuilder &addPushConstants(const vk::PushConstantRange &pushconstants);
+		ComputePipelineBuilder &setDescriptorLayouts(const std::vector<vk::DescriptorSetLayout> &layouts);
+
+	private:
+		vk::Device device;
+		vk::PipelineCache pipelineCache;
+		vk::PipelineShaderStageCreateInfo shaderStage;
+		std::vector<vk::PushConstantRange> pushConstants;
+		std::vector<vk::DescriptorSetLayout> descLayouts;
+
+		vk::UniqueShaderModule shaderModule;
+	};
 
 #if defined(VULKANHELPER_IMPLEMENTATION)
 #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
@@ -818,6 +840,62 @@ namespace vkh {
 		auto ret = device.createGraphicsPipelineUnique(pipelineCache, pipelineCI);
 		if (ret.result != vk::Result::eSuccess) {
 			throw std::runtime_error("error: Failed to create graphics pipeline!");
+		}
+		pipeline.pipeline = std::move(ret.value);
+
+		return pipeline;
+	}
+
+	ComputePipelineBuilder::ComputePipelineBuilder(vk::Device device, vk::PipelineCache pipelineCache)
+		: device{device}, pipelineCache{pipelineCache} {
+	}
+	ComputePipelineBuilder &ComputePipelineBuilder::setShaderStage(
+		const std::vector<uint32_t> *spv,
+		vk::PipelineShaderStageCreateFlags flags,
+		vk::SpecializationInfo *pSpecializationInfo) {
+		vk::ShaderModuleCreateInfo moduleCreateInfo{
+			.codeSize = static_cast<uint32_t>(spv->size()) * sizeof(uint32_t),
+			.pCode = spv->data()};
+		this->shaderModule = device.createShaderModuleUnique(moduleCreateInfo);
+		vk::PipelineShaderStageCreateInfo pipelineStageCI{
+			.stage = vk::ShaderStageFlagBits::eCompute,
+			.module = this->shaderModule.get(),
+			.pName = "main"};
+		this->shaderStage = pipelineStageCI;
+		return *this;
+	}
+	ComputePipelineBuilder &ComputePipelineBuilder::addPushConstants(const vk::PushConstantRange &pushconstant) {
+		this->pushConstants.push_back(pushconstant);
+		return *this;
+	}
+
+	ComputePipelineBuilder &ComputePipelineBuilder::setDescriptorLayouts(const std::vector<vk::DescriptorSetLayout> &layouts) {
+		this->descLayouts = layouts;
+		return *this;
+	}
+
+	Pipeline ComputePipelineBuilder::build() {
+		Pipeline pipeline;
+
+		//build pipeline layout:
+		vk::PipelineLayoutCreateInfo layoutCI{
+			.setLayoutCount = static_cast<uint32_t>(descLayouts.size()),
+			.pSetLayouts = descLayouts.data(),
+			.pushConstantRangeCount = uint32_t(pushConstants.size()),
+			.pPushConstantRanges = pushConstants.data(),
+		};
+
+		pipeline.layout = device.createPipelineLayoutUnique(layoutCI);
+
+		//we now use all of the info structs we have been writing into into this one to create the pipeline
+		vk::ComputePipelineCreateInfo pipelineCI{
+			.stage = this->shaderStage,
+			.layout = pipeline.layout.get(),
+		};
+
+		auto ret = device.createComputePipelineUnique(pipelineCache, pipelineCI);
+		if (ret.result != vk::Result::eSuccess) {
+			throw std::runtime_error("error: Failed to create compute pipeline!");
 		}
 		pipeline.pipeline = std::move(ret.value);
 

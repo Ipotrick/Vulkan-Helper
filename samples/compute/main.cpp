@@ -50,59 +50,62 @@ int main() try {
 	});
 	logicalDevice.bindBufferMemory(deviceBuffer, deviceBufferMemory, 0);
 
-	vk::DescriptorSetLayoutBinding descriptorSetLayoutBindings[] = {
-		{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute, 0},
-	};
-	auto descriptorSetLayout = logicalDevice.createDescriptorSetLayout({.bindingCount = 1, .pBindings = descriptorSetLayoutBindings});
-	auto computePipelineLayout = logicalDevice.createPipelineLayout({.setLayoutCount = 1, .pSetLayouts = &descriptorSetLayout});
-
 	glslang::InitializeProcess();
 	auto computeSpv = loadGlslShaderToSpv("samples/compute/main.comp");
 	glslang::FinalizeProcess();
-	auto computeShaderModule = logicalDevice.createShaderModule({.codeSize = computeSpv.size() * sizeof(computeSpv[0]), .pCode = computeSpv.data()});
+	vkh::ComputePipelineBuilder pipelineBuilder(logicalDevice);
+	pipelineBuilder.setShaderStage(&computeSpv);
+	// .setBinding?
+	auto computePipeline = pipelineBuilder.build();
 
-	vk::ComputePipelineCreateInfo computePipelineCreateInfo{
-		.stage{
-			.stage = vk::ShaderStageFlagBits::eCompute,
-			.module = computeShaderModule,
-			.pName = "main",
-		},
-		.layout = computePipelineLayout,
-	};
-
-	auto [computePipelineCreationResult, computePipeline] = logicalDevice.createComputePipeline(nullptr, computePipelineCreateInfo);
-	if (computePipelineCreationResult != vk::Result::eSuccess)
-		throw std::runtime_error("Failed to create compute pipeline");
-
-	logicalDevice.destroyShaderModule(computeShaderModule);
-
-	vk::DescriptorPoolSize descriptorPoolSize{.type = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1};
-	auto descriptorPool = logicalDevice.createDescriptorPool({
-		.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-		.maxSets = 1,
-		.poolSizeCount = 1,
-		.pPoolSizes = &descriptorPoolSize,
-	});
-	auto descriptorSets = logicalDevice.allocateDescriptorSets({.descriptorPool = descriptorPool, .descriptorSetCount = 1, .pSetLayouts = &descriptorSetLayout});
-	vk::DescriptorBufferInfo descriptorBufferInfo(deviceBuffer, 0, localBufferByteCount);
-	logicalDevice.updateDescriptorSets(
-		{
-			vk::WriteDescriptorSet{
-				.dstSet = descriptorSets[0],
-				.descriptorCount = 1,
-				.descriptorType = vk::DescriptorType::eStorageBuffer,
-				.pBufferInfo = &descriptorBufferInfo,
-			},
-		},
-		nullptr);
+	// vk::DescriptorSetLayoutBinding descriptorSetLayoutBindings[] = {
+	// 	{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute, 0},
+	// };
+	// auto descriptorSetLayout = logicalDevice.createDescriptorSetLayout({.bindingCount = 1, .pBindings = descriptorSetLayoutBindings});
+	// auto computePipelineLayout = logicalDevice.createPipelineLayout({.setLayoutCount = 1, .pSetLayouts = &descriptorSetLayout});
+	// glslang::InitializeProcess();
+	// auto computeSpv = loadGlslShaderToSpv("samples/compute/main.comp");
+	// glslang::FinalizeProcess();
+	// auto computeShaderModule = logicalDevice.createShaderModule({.codeSize = computeSpv.size() * sizeof(computeSpv[0]), .pCode = computeSpv.data()});
+	// vk::ComputePipelineCreateInfo computePipelineCreateInfo{
+	// 	.stage{
+	// 		.stage = vk::ShaderStageFlagBits::eCompute,
+	// 		.module = computeShaderModule,
+	// 		.pName = "main",
+	// 	},
+	// 	.layout = computePipelineLayout,
+	// };
+	// auto [computePipelineCreationResult, computePipeline] = logicalDevice.createComputePipeline(nullptr, computePipelineCreateInfo);
+	// if (computePipelineCreationResult != vk::Result::eSuccess)
+	// 	throw std::runtime_error("Failed to create compute pipeline");
+	// logicalDevice.destroyShaderModule(computeShaderModule);
+	// vk::DescriptorPoolSize descriptorPoolSize{.type = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1};
+	// auto descriptorPool = logicalDevice.createDescriptorPool({
+	// 	.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+	// 	.maxSets = 1,
+	// 	.poolSizeCount = 1,
+	// 	.pPoolSizes = &descriptorPoolSize,
+	// });
+	// auto descriptorSets = logicalDevice.allocateDescriptorSets({.descriptorPool = descriptorPool, .descriptorSetCount = 1, .pSetLayouts = &descriptorSetLayout});
+	// vk::DescriptorBufferInfo descriptorBufferInfo(deviceBuffer, 0, localBufferByteCount);
+	// logicalDevice.updateDescriptorSets(
+	// 	{
+	// 		vk::WriteDescriptorSet{
+	// 			.dstSet = descriptorSets[0],
+	// 			.descriptorCount = 1,
+	// 			.descriptorType = vk::DescriptorType::eStorageBuffer,
+	// 			.pBufferInfo = &descriptorBufferInfo,
+	// 		},
+	// 	},
+	// 	nullptr);
 
 	auto commandPool = logicalDevice.createCommandPoolUnique({.queueFamilyIndex = computeQueueFamilyIndex});
 	auto commandBuffer = logicalDevice.allocateCommandBuffers({.commandPool = *commandPool, .commandBufferCount = 1}).front();
 
 	commandBuffer.begin(vk::CommandBufferBeginInfo{});
-	commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
-	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, computePipelineLayout, 0, descriptorSets[0], nullptr);
-	commandBuffer.dispatch(dim.x, dim.y, 1);
+	// commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
+	// commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, computePipelineLayout, 0, descriptorSets[0], nullptr);
+	// commandBuffer.dispatch(dim.x, dim.y, 1);
 	commandBuffer.end();
 
 	double duration = 0.0;
