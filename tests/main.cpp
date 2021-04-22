@@ -2,11 +2,11 @@
 #include <vulkanhelper.hpp>
 
 std::size_t deviceRating(vk::PhysicalDevice) {
-    return 0;
+	return 0;
 }
 
 void testSuite() {
-    std::vector<const char *> vectorCString = {"adsda", "asdasdwaa", "wadsdawdw"};
+	std::vector<const char *> vectorCString = {"adsda", "asdasdwaa", "wadsdawdw"};
 	vk::Instance inst[] = {
 		vkh::createInstance({}, {}),
 		vkh::createInstance({"layer"}, {}),
@@ -28,11 +28,11 @@ void testSuite() {
 		vkh::selectPhysicalDevice(inst[0], deviceRating),
 	};
 
-    vk::Device logicalDevices[] = {
-        vkh::createLogicalDevice(physicalDevices[0], {0, 2, 3}, {"extensions", "other ext"}),
-        vkh::createLogicalDevice(physicalDevices[0], {1, 1, 3}, {"1ext"}),
-        vkh::createLogicalDevice(physicalDevices[0], {0, 0, 0}, vectorCString),
-    };
+	vk::Device logicalDevices[] = {
+		vkh::createLogicalDevice(physicalDevices[0], {0, 2, 3}, {"extensions", "other ext"}),
+		vkh::createLogicalDevice(physicalDevices[0], {1, 1, 3}, {"1ext"}),
+		vkh::createLogicalDevice(physicalDevices[0], {0, 0, 0}, vectorCString),
+	};
 }
 
 int main() {
