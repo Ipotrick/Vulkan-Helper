@@ -11,7 +11,6 @@
 // If you want to use spirv reflect for reflection on descriptor sets in pipeline creation,
 // set the following define to your include path of spirv_reflect like the following:
 // #define VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH <spirv_reflect.h>
-#define VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH <spirv_reflect.hpp>
 
 #if defined(VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH)
 #define VULKANHELPER_USE_SPIRV_REFLECT
