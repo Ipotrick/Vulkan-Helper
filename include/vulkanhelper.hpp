@@ -11,6 +11,7 @@
 // If you want to use spirv reflect for reflection on descriptor sets in pipeline creation,
 // set the following define to your include path of spirv_reflect like the following:
 // #define VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH <spirv_reflect.h>
+#define VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH <spirv_reflect.hpp>
 
 #if defined(VULKANHELPER_SPIRV_REFLECT_INCLUDE_PATH)
 #define VULKANHELPER_USE_SPIRV_REFLECT
@@ -456,17 +457,59 @@ namespace vkh {
 	}
 #endif
 
+#if defined(VULKANHELPER_USE_SPIRV_REFLECT)
 	std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>
-	reflectSetBindings(std::vector<uint32_t> spv, vk::ShaderStageFlagBits shaderStage);
+	reflectSetBindings(const std::vector<uint32_t> &spv, vk::ShaderStageFlagBits shaderStage);
 
 	std::vector<vk::DescriptorSetLayout> mergeReflectedSetBindings(
 		std::vector<std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>> setMaps,
 		vkh::DescriptorSetLayoutCache &layoutCache);
 
+	std::vector<vk::PushConstantRange> reflectPushConstants(const std::vector<uint32_t> &spv, vk::ShaderStageFlagBits shaderStage);
+	std::vector<vk::PushConstantRange> mergeReflectedPushConstants(const std::vector<std::vector<vk::PushConstantRange>> &pushConstantsRanges);
+
+#endif
+
 #if defined(VULKANHELPER_IMPLEMENTATION)
 #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
+	std::vector<vk::PushConstantRange> mergeReflectedPushConstants(const std::vector<std::vector<vk::PushConstantRange>> &pushConstantsRanges) {
+		std::vector<vk::PushConstantRange> ret;
+		for (auto &ranges : pushConstantsRanges) {
+			for (auto pushConstant : ranges) {
+				if (auto iter = std::find(ret.begin(), ret.end(), pushConstant);
+					iter != ret.end()) {
+					iter->stageFlags |= pushConstant.stageFlags;
+				} else {
+					ret.push_back(pushConstant);
+				}
+			}
+		}
+		return std::move(ret);
+	}
+	std::vector<vk::PushConstantRange> reflectPushConstants(const std::vector<uint32_t> &spv, vk::ShaderStageFlagBits shaderStage) {
+		SpvReflectShaderModule module = {};
+		SpvReflectResult result = spvReflectCreateShaderModule(spv.size() * sizeof(uint32_t), spv.data(), &module);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+		uint32_t count = 0;
+		result = spvReflectEnumeratePushConstantBlocks(&module, &count, NULL);
+
+		std::vector<SpvReflectBlockVariable *> blocks(count);
+		result = spvReflectEnumeratePushConstantBlocks(&module, &count, blocks.data());
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+		std::vector<vk::PushConstantRange> ret;
+		for (auto *block : blocks) {
+			ret.push_back(vk::PushConstantRange{
+				.stageFlags = shaderStage,
+				.offset = block->offset,
+				.size = block->size,
+			});
+		}
+		return std::move(ret);
+	}
 	std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>
-	reflectSetBindings(std::vector<uint32_t> spv, vk::ShaderStageFlagBits shaderStage) {
+	reflectSetBindings(const std::vector<uint32_t> &spv, vk::ShaderStageFlagBits shaderStage) {
 		SpvReflectShaderModule module = {};
 		SpvReflectResult result = spvReflectCreateShaderModule(spv.size() * sizeof(uint32_t), spv.data(), &module);
 		assert(result == SPV_REFLECT_RESULT_SUCCESS);
@@ -575,6 +618,7 @@ namespace vkh {
 		GraphicsPipelineBuilder &setDescriptorLayouts(const std::vector<vk::DescriptorSetLayout> &layouts);
 #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
 		GraphicsPipelineBuilder &reflectSPVForDescriptors(DescriptorSetLayoutCache &layoutCache);
+		GraphicsPipelineBuilder &reflectSPVForPushConstants();
 #endif // VULKANHELPER_USE_SPIRV_REFLECT
 
 	private:
@@ -614,6 +658,7 @@ namespace vkh {
 		ComputePipelineBuilder &setDescriptorLayouts(const std::vector<vk::DescriptorSetLayout> &layouts);
 #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
 		ComputePipelineBuilder &reflectSPVForDescriptors(DescriptorSetLayoutCache &layoutCache);
+		ComputePipelineBuilder &reflectSPVForPushConstants();
 #endif
 
 	private:
@@ -635,7 +680,7 @@ namespace vkh {
 		std::vector<std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>>> setMaps;
 
 		if (this->descLayouts.size() > 0) {
-			std::cerr << "vulkan helper warning: there are diescriptor set layouts set brefore reflectSPVForDescriptors. All descriptor set layouts will be replaced by reflectSPVForDescriptors!\n";
+			std::cerr << "vulkan helper warning: there are diescriptor set layouts set before reflectSPV. All descriptor set layouts will be replaced by reflectSPV!\n";
 		}
 
 		for (auto [stage, spvPtr] : spvs) {
@@ -643,6 +688,19 @@ namespace vkh {
 		}
 		this->descLayouts = mergeReflectedSetBindings(setMaps, layoutCache);
 
+		return *this;
+	}
+
+	GraphicsPipelineBuilder &GraphicsPipelineBuilder::reflectSPVForPushConstants() {
+		std::vector<std::vector<vk::PushConstantRange>> results;
+		if (this->descLayouts.size() > 0) {
+			std::cerr << "vulkan helper warning: there are push constants ranges set before reflectSPV. All push constant ranges will be replaced by reflectSPVs!\n";
+		}
+		std::vector<std::vector<vk::PushConstantRange>> ranges;
+		for (auto [stage, spvPtr] : spvs) {
+			ranges.push_back(reflectPushConstants(*spvPtr, stage));
+		}
+		this->pushConstants = mergeReflectedPushConstants(ranges);
 		return *this;
 	}
 #endif // VULKANHELPER_USE_SPIRV_REFLECT
@@ -872,7 +930,7 @@ namespace vkh {
 	}
 
 #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
-	ComputePipelineBuilder& ComputePipelineBuilder::reflectSPVForDescriptors(DescriptorSetLayoutCache& layoutCache) {
+	ComputePipelineBuilder &ComputePipelineBuilder::reflectSPVForDescriptors(DescriptorSetLayoutCache &layoutCache) {
 
 		if (this->descLayouts.size() > 0) {
 			std::cerr << "vulkan helper warning: there are diescriptor set layouts set brefore reflectSPVForDescriptors. All descriptor set layouts will be replaced by reflectSPVForDescriptors!\n";
@@ -884,6 +942,14 @@ namespace vkh {
 
 		const std::vector<uint32_t> *vertexShaderSPV{nullptr};
 
+		return *this;
+	}
+	ComputePipelineBuilder &ComputePipelineBuilder::reflectSPVForPushConstants() {
+		std::vector<std::vector<vk::PushConstantRange>> results;
+		if (this->descLayouts.size() > 0) {
+			std::cerr << "vulkan helper warning: there are push constants ranges set before reflectSPV. All push constant ranges will be replaced by reflectSPVs!\n";
+		}
+		this->pushConstants = reflectPushConstants(*spv, vk::ShaderStageFlagBits::eCompute);
 		return *this;
 	}
 #endif // #if defined(VULKANHELPER_USE_SPIRV_REFLECT)
