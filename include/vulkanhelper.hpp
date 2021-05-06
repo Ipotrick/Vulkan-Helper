@@ -7,6 +7,7 @@
 #include <functional>
 #include <set>
 #include <unordered_map>
+#include <variant>
 
 // If you want to use spirv reflect for reflection on descriptor sets in pipeline creation,
 // set the following define to your include path of spirv_reflect like the following:
@@ -36,60 +37,6 @@
 #endif
 
 namespace vkh {
-    std::size_t sizeofFormat(vk::Format format);
-
-#if defined(VULKANHELPER_IMPLEMENTATION)
-    std::size_t sizeofFormat(vk::Format format) {
-        if (format == vk::Format::eUndefined)
-            return -1;
-        if (format == vk::Format::eR4G4UnormPack8)
-            return 1;
-        if (format >= vk::Format::eR4G4B4A4UnormPack16 && format <= vk::Format::eA1R5G5B5UnormPack16)
-            return 2;
-        if (format >= vk::Format::eR8Unorm && format <= vk::Format::eR8Srgb)
-            return 1;
-        if (format >= vk::Format::eR8G8Unorm && format <= vk::Format::eR8G8Srgb)
-            return 2;
-        if (format >= vk::Format::eR8G8B8Unorm && format <= vk::Format::eB8G8R8Srgb)
-            return 3;
-        if (format >= vk::Format::eR8G8B8A8Unorm && format <= vk::Format::eA2B10G10R10SintPack32)
-            return 4;
-        if (format >= vk::Format::eR16Unorm && format <= vk::Format::eR16Sfloat)
-            return 2;
-        if (format >= vk::Format::eR16G16Unorm && format <= vk::Format::eR16G16Sfloat)
-            return 4;
-        if (format >= vk::Format::eR16G16B16Unorm && format <= vk::Format::eR16G16B16Sfloat)
-            return 6;
-        if (format >= vk::Format::eR16G16B16A16Unorm && format <= vk::Format::eR16G16B16A16Sfloat)
-            return 8;
-        if (format >= vk::Format::eR32Uint && format <= vk::Format::eR32Sfloat)
-            return 4;
-        if (format >= vk::Format::eR32G32Uint && format <= vk::Format::eR32G32Sfloat)
-            return 8;
-        if (format >= vk::Format::eR32G32B32Uint && format <= vk::Format::eR32G32B32Sfloat)
-            return 12;
-        if (format >= vk::Format::eR32G32B32A32Uint && format <= vk::Format::eR32G32B32A32Sfloat)
-            return 16;
-        if (format >= vk::Format::eR64Uint && format <= vk::Format::eR64Sfloat)
-            return 8;
-        if (format >= vk::Format::eR64G64Uint && format <= vk::Format::eR64G64Sfloat)
-            return 16;
-        if (format >= vk::Format::eR64G64B64Uint && format <= vk::Format::eR64G64B64Sfloat)
-            return 24;
-        if (format >= vk::Format::eR64G64B64A64Uint && format <= vk::Format::eR64G64B64A64Sfloat)
-            return 32;
-        if (format == vk::Format::eB10G11R11UfloatPack32 || format == vk::Format::eE5B9G9R9UfloatPack32)
-            return 32;
-        if (format == vk::Format::eD16Unorm)
-            return 16;
-        if (format == vk::Format::eX8D24UnormPack32 || format == vk::Format::eD32Sfloat)
-            return 32;
-        if (format == vk::Format::eS8Uint)
-            return 8;
-        return -1;
-    }
-#endif
-
 	struct VertexDescription {
 		std::vector<vk::VertexInputBindingDescription> bindings;
 		std::vector<vk::VertexInputAttributeDescription> attributes;
@@ -746,7 +693,7 @@ namespace vkh {
 
 	GraphicsPipelineBuilder &GraphicsPipelineBuilder::reflectSPVForPushConstants() {
 		std::vector<std::vector<vk::PushConstantRange>> results;
-		if (this->descLayouts.size() > 0) {
+		if (this->pushConstants.size() > 0) {
 			std::cerr << "vulkan helper warning: there are push constants ranges set before reflectSPV. All push constant ranges will be replaced by reflectSPVs!\n";
 		}
 		std::vector<std::vector<vk::PushConstantRange>> ranges;
@@ -1204,6 +1151,116 @@ namespace vkh {
 	}
 
 #endif
+	class RenderPassBuilder {
+	public:
+		RenderPassBuilder(vk::Device device) : device{device} {}
+		vk::UniqueRenderPass build() {
+			if (subpasses.empty()) {
+				subpasses.push_back({});
+
+				auto &[desc, attachmentRefs] = subpasses.back();
+				attachmentRefs.reserve(attachmentDescs.size());
+
+				std::optional<vk::AttachmentReference> depthAttachment;
+
+				for (uint32_t i = 0; i < attachmentDescs.size(); ++i) {
+					vk::ImageLayout layout;
+					switch (attachmentDescs[i].finalLayout) {
+					case vk::ImageLayout::eDepthAttachmentOptimal:
+					case vk::ImageLayout::eDepthAttachmentStencilReadOnlyOptimal:
+					case vk::ImageLayout::eDepthReadOnlyOptimal:
+					case vk::ImageLayout::eDepthReadOnlyStencilAttachmentOptimal:
+					case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+						printf("depth\n");
+						assert(!depthAttachment); // can only have one depth stencil attachment
+						depthAttachment = vk::AttachmentReference{
+							.attachment = i,
+							.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+						};
+						break;
+					case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+						printf("depth\n");
+						assert(!depthAttachment); // can only have one depth stencil attachment
+						depthAttachment = vk::AttachmentReference{
+							.attachment = i,
+							.layout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+						};
+						break;
+					default:
+						printf("color\n");
+						desc.colorAttachmentCount += 1;
+						attachmentRefs.push_back({
+							.attachment = i,
+							.layout = vk::ImageLayout::eColorAttachmentOptimal,
+						});
+					}
+				}
+
+				desc.pColorAttachments = attachmentRefs.data();
+				if (depthAttachment) {
+					attachmentRefs.push_back(*depthAttachment);
+					desc.pDepthStencilAttachment = attachmentRefs.data() + desc.colorAttachmentCount;
+				}
+			}
+
+			std::vector<vk::SubpassDescription> subpassDescriptions;
+			subpassDescriptions.reserve(subpasses.size());
+			for (auto &[subpassDescription, _] : subpasses) {
+				subpassDescriptions.push_back(subpassDescription);
+			}
+
+			vk::RenderPassCreateInfo passCI{
+				.flags = flags,
+				.attachmentCount = static_cast<uint32_t>(attachmentDescs.size()),
+				.pAttachments = attachmentDescs.data(),
+				.subpassCount = static_cast<uint32_t>(subpassDescriptions.size()),
+				.pSubpasses = subpassDescriptions.data(),
+			};
+
+			return device.createRenderPassUnique(passCI);
+		}
+
+		RenderPassBuilder &addAttachment(vk::AttachmentDescription desc) {
+			attachmentDescs.emplace_back(desc);
+			return *this;
+		}
+
+		RenderPassBuilder &addSubpass(
+			std::vector<vk::AttachmentReference> colorAttachments,
+			std::optional<vk::AttachmentReference> depthAttachment = {},
+			vk::SubpassDescriptionFlags flags = {}) {
+			subpasses.push_back({});
+
+			auto &[desc, attachmentRefs] = subpasses.back();
+
+			desc.flags = flags;
+			desc.colorAttachmentCount = colorAttachments.size();
+
+			attachmentRefs = std::move(colorAttachments);
+			if (depthAttachment) {
+				attachmentRefs.push_back(*depthAttachment);
+			}
+
+			desc.pColorAttachments = attachmentRefs.data();
+			if (depthAttachment) {
+				desc.pDepthStencilAttachment = attachmentRefs.data() + desc.colorAttachmentCount;
+			}
+
+			return *this;
+		}
+
+		RenderPassBuilder &setCreateFags(vk::RenderPassCreateFlags flags) {
+			this->flags = flags;
+			return *this;
+		}
+
+	private:
+		vk::Device device;
+		vk::RenderPassCreateFlags flags = {};
+		std::vector<vk::AttachmentDescription> attachmentDescs;
+		std::vector<std::pair<vk::SubpassDescription, std::vector<vk::AttachmentReference>>> subpasses;
+	};
+
 } // namespace vkh
 
 namespace vkh_detail {
